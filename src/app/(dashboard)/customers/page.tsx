@@ -17,6 +17,7 @@ import {
   Check,
   AlertCircle,
   FileSpreadsheet,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
@@ -106,8 +107,39 @@ export default function CustomersPage() {
     setIsModalOpen(true);
   };
 
+  const handleModalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalSubmitting(true);
+    setModalError(null);
+
+    try {
+      const url = editingCustomer
+        ? `/api/customers/${editingCustomer.id}`
+        : "/api/customers";
+      const method = editingCustomer ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save customer record");
+      }
+
+      setIsModalOpen(false);
+      fetchCustomers();
+    } catch (err: any) {
+      setModalError(err.message);
+    } finally {
+      setModalSubmitting(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
-    if (!confirm(language === "ta" ? "இந்த வாடிக்கையாளரை நீக்க விரும்புகிறீர்களா?" : "Are you sure you want to remove this customer?")) {
+    if (!confirm(language === "ta" ? "இந்த வாடிக்கையாளரை முடக்க விரும்புகிறீர்களா?" : "Are you sure you want to deactivate/delete this customer?")) {
       return;
     }
     try {
@@ -120,82 +152,56 @@ export default function CustomersPage() {
     }
   };
 
-  const handleModalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setModalSubmitting(true);
-    setModalError(null);
-
-    try {
-      const url = editingCustomer ? `/api/customers/${editingCustomer.id}` : "/api/customers";
-      const method = editingCustomer ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || "Operation failed");
-      }
-
-      setIsModalOpen(false);
-      fetchCustomers();
-    } catch (err: any) {
-      setModalError(err.message || "Something went wrong");
-    } finally {
-      setModalSubmitting(false);
-    }
-  };
-
   const exportToExcel = () => {
     const exportData = customers.map((c) => ({
       "Customer ID": c.customer_code,
       "Full Name": c.full_name,
-      "Father / Husband": c.father_husband_name || "-",
-      "Mobile": c.mobile,
-      "Alt Mobile": c.alt_mobile || "-",
-      "Address": c.address,
-      "City": c.city,
-      "District": c.district,
-      "Nominee Name": c.nominee_name || "-",
-      "Nominee Relation": c.nominee_relation || "-",
-      "Nominee Mobile": c.nominee_mobile || "-",
-      "Registration Date": c.registration_date,
-      "Status": c.status,
+      "Father/Husband": c.father_husband_name || "",
+      Mobile: c.mobile,
+      "Alt Mobile": c.alt_mobile || "",
+      City: c.city,
+      District: c.district,
+      Pincode: c.pincode,
+      "Active Schemes": c.active_schemes_count || 0,
+      "Total Paid (₹)": c.total_paid || 0,
+      Status: c.status,
+      "Registration Date": formatDate(c.registration_date),
     }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Customers");
-    XLSX.writeFile(wb, "Diwali_Chit_Customers.xlsx");
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
+    XLSX.writeFile(workbook, `Diwali_Chit_Customers_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header bar */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
-            {t.customers}
+          <h1 className="text-xl sm:text-2xl font-black text-amber-300 font-serif tracking-wide drop-shadow flex items-center gap-2">
+            <Users className="h-6 w-6 text-amber-400" />
+            <span>{t.customers}</span>
           </h1>
-          <p className="text-xs text-slate-500">
-            {language === "ta" ? "சந்தாதாரர்களின் விவரங்கள், திட்டங்கள் & பாஸ்புக் மேலாண்மை" : "Manage customer records, enrolled schemes and member cards"}
+          <p className="text-xs text-amber-200/70 mt-1">
+            {language === "ta"
+              ? "தீபாவளி சீட்டு சந்தாதாரர்கள் மேலாண்மை, பாஸ்புக் & கணக்கு விவரங்கள்"
+              : "Comprehensive customer directory, scheme ledgers & digital passbooks"}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={exportToExcel}
-            className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all"
+            className="flex items-center gap-2 bg-[#250005] border border-amber-500/30 hover:bg-amber-500/10 text-amber-200 text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm transition-all"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+            <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
             <span>Excel Export</span>
           </button>
 
           <button
             onClick={handleOpenAdd}
-            className="flex items-center gap-2 bg-gradient-to-r from-brand-blue to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-900/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+            className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] text-xs font-black px-4 py-2 rounded-xl shadow-md transition-all"
           >
             <Plus className="h-4 w-4" />
             <span>{t.addCustomer}</span>
@@ -204,22 +210,22 @@ export default function CustomersPage() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-center gap-3 maroon-card p-4 rounded-2xl shadow-md">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-amber-400/60" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={language === "ta" ? "வாடிக்கையாளர் பெயர், மொபைல், ஐடி அல்லது ஊர்..." : "Search by name, mobile, customer ID or city..."}
-            className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue"
+            className="w-full pl-10 pr-4 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 focus:ring-2 focus:ring-amber-400"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full sm:w-44 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium"
+          className="w-full sm:w-44 px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200"
         >
           <option value="">{language === "ta" ? "அனைத்து நிலைகளும்" : "All Statuses"}</option>
           <option value="active">Active (செயலில் உள்ளது)</option>
@@ -228,10 +234,10 @@ export default function CustomersPage() {
       </div>
 
       {/* Customers Table */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+      <div className="maroon-card rounded-3xl overflow-hidden shadow-xl border border-amber-500/25">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 font-semibold uppercase border-b border-slate-200">
+          <table className="w-full text-left text-xs bg-[#240005]">
+            <thead className="bg-[#380109] text-amber-300 font-serif border-b border-amber-500/30">
               <tr>
                 <th className="py-3 px-4">Customer ID</th>
                 <th className="py-3 px-4">Name & Father/Husband</th>
@@ -243,49 +249,49 @@ export default function CustomersPage() {
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-amber-500/10">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-amber-300/60 font-serif">
                     Loading customers...
                   </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-amber-300/60 font-serif">
                     No customers found matching your criteria.
                   </td>
                 </tr>
               ) : (
                 customers.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-amber-700">
+                  <tr key={c.id} className="hover:bg-amber-500/5 transition-colors text-amber-100">
+                    <td className="py-3 px-4 font-mono font-bold text-amber-400">
                       {c.customer_code}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-slate-800">{c.full_name}</div>
+                      <div className="font-bold text-amber-100">{c.full_name}</div>
                       {c.father_husband_name && (
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-amber-300/70">
                           c/o {c.father_husband_name}
                         </div>
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-700">{c.mobile}</div>
+                      <div className="font-bold text-amber-300 font-mono">{c.mobile}</div>
                       {c.alt_mobile && (
-                        <div className="text-[10px] text-slate-400">{c.alt_mobile}</div>
+                        <div className="text-[10px] text-amber-400/60 font-mono">{c.alt_mobile}</div>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-slate-600">
+                    <td className="py-3 px-4 text-amber-200/80">
                       <div>{c.city}</div>
-                      <div className="text-[10px] text-slate-400">{c.district} - {c.pincode}</div>
+                      <div className="text-[10px] text-amber-400/60">{c.district} - {c.pincode}</div>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-brand-blue">
+                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300">
                         {c.active_schemes_count || 0} Schemes
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-emerald-700">
+                    <td className="py-3 px-4 text-right font-black text-amber-300">
                       {formatINR(c.total_paid)}
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -298,28 +304,28 @@ export default function CustomersPage() {
                         <Link
                           href={`/customers/${c.id}`}
                           title="View Ledger & Passbook"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-brand-blue hover:bg-slate-100"
+                          className="p-1.5 rounded-lg text-amber-300 hover:text-amber-100 hover:bg-amber-500/15 border border-amber-500/20"
                         >
                           <Eye className="h-4 w-4" />
                         </Link>
                         <Link
                           href={`/customers/print-card/${c.id}`}
                           title="Print Member Card / Passbook"
-                          className="p-1.5 rounded-lg text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                          className="p-1.5 rounded-lg text-amber-400 hover:text-amber-200 hover:bg-amber-500/15 border border-amber-500/20"
                         >
                           <CreditCard className="h-4 w-4" />
                         </Link>
                         <button
                           onClick={() => handleOpenEdit(c)}
                           title="Edit Customer"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-slate-100"
+                          className="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-500/20"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(c.id)}
                           title="Delete / Block"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-slate-100"
+                          className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-500/20"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -335,33 +341,36 @@ export default function CustomersPage() {
 
       {/* Add / Edit Customer Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-blue text-white">
-              <h3 className="text-base font-bold">
-                {editingCustomer
-                  ? (language === "ta" ? "வாடிக்கையாளர் திருத்தம்" : "Edit Customer Details")
-                  : (language === "ta" ? "புதிய வாடிக்கையாளர் பதிவு" : "Register New Customer")}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-2xl erp-modal-box overflow-hidden my-8 shadow-2xl border border-amber-500/40">
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#3e010b] via-[#4d0210] to-[#2b0006] text-amber-200 border-b border-amber-500/30">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <h3 className="text-sm font-bold font-serif tracking-wide">
+                  {editingCustomer
+                    ? (language === "ta" ? "வாடிக்கையாளர் திருத்தம்" : "Edit Customer Details")
+                    : (language === "ta" ? "புதிய வாடிக்கையாளர் பதிவு" : "Register New Customer")}
+                </h3>
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-full p-1 text-white/80 hover:bg-white/10"
+                className="rounded-full p-1 text-amber-400/80 hover:bg-amber-500/10"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleModalSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleModalSubmit} className="p-6 space-y-4 bg-[#240005]">
               {modalError && (
-                <div className="flex items-center gap-2 p-3 text-xs bg-rose-50 text-rose-700 rounded-xl border border-rose-200">
+                <div className="flex items-center gap-2 p-3 text-xs bg-rose-950/80 text-rose-300 rounded-xl border border-rose-500/40">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{modalError}</span>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     முழுப் பெயர் (Full Name) *
                   </label>
                   <input
@@ -370,12 +379,12 @@ export default function CustomersPage() {
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                     placeholder="e.g. S. Murugesan"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     தந்தை / கணவர் பெயர் (Father / Husband)
                   </label>
                   <input
@@ -383,12 +392,12 @@ export default function CustomersPage() {
                     value={formData.fatherOrHusbandName}
                     onChange={(e) => setFormData({ ...formData, fatherOrHusbandName: e.target.value })}
                     placeholder="e.g. Subramanian"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     கைபேசி எண் (Mobile Number) *
                   </label>
                   <input
@@ -397,12 +406,12 @@ export default function CustomersPage() {
                     value={formData.mobile}
                     onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
                     placeholder="10-digit mobile"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     கூடுதல் மொபைல் (Alternate Mobile)
                   </label>
                   <input
@@ -410,12 +419,12 @@ export default function CustomersPage() {
                     value={formData.altMobile}
                     onChange={(e) => setFormData({ ...formData, altMobile: e.target.value })}
                     placeholder="Optional second number"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 font-mono"
                   />
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     முகவரி (Door No, Street Address) *
                   </label>
                   <input
@@ -424,24 +433,24 @@ export default function CustomersPage() {
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     placeholder="e.g. 15/2, Gandhi Road, Suramangalam"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     ஊர் / நகரம் (City)
                   </label>
                   <input
                     type="text"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     மாவட்டம் (District) & அஞ்சல் குறியீடு (Pincode)
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -450,20 +459,20 @@ export default function CustomersPage() {
                       value={formData.district}
                       onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                       placeholder="Salem"
-                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                      className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
                     />
                     <input
                       type="text"
                       value={formData.pincode}
                       onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
                       placeholder="636001"
-                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                      className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     ஆதார் எண் (Aadhaar Reference - Last 4 Digits)
                   </label>
                   <input
@@ -472,12 +481,12 @@ export default function CustomersPage() {
                     value={formData.aadhaarRef}
                     onChange={(e) => setFormData({ ...formData, aadhaarRef: e.target.value })}
                     placeholder="e.g. 8892"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     வாரிசுதாரர் பெயர் (Nominee Name)
                   </label>
                   <input
@@ -485,12 +494,12 @@ export default function CustomersPage() {
                     value={formData.nomineeName}
                     onChange={(e) => setFormData({ ...formData, nomineeName: e.target.value })}
                     placeholder="Nominee full name"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     வாரிசுதாரர் உறவுமுறை (Nominee Relationship)
                   </label>
                   <input
@@ -498,12 +507,12 @@ export default function CustomersPage() {
                     value={formData.nomineeRelation}
                     onChange={(e) => setFormData({ ...formData, nomineeRelation: e.target.value })}
                     placeholder="Wife / Son / Daughter"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-amber-300 mb-1 font-serif">
                     வாரிசுதாரர் மொபைல் (Nominee Mobile)
                   </label>
                   <input
@@ -511,23 +520,23 @@ export default function CustomersPage() {
                     value={formData.nomineeMobile}
                     onChange={(e) => setFormData({ ...formData, nomineeMobile: e.target.value })}
                     placeholder="Nominee contact"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 font-mono"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-amber-500/20">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-amber-300/80 hover:bg-amber-500/10 rounded-xl border border-amber-500/20 transition-colors"
                 >
                   {t.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={modalSubmitting}
-                  className="px-5 py-2 text-xs font-bold bg-brand-blue hover:bg-blue-800 text-white rounded-xl shadow-md"
+                  className="gold-gradient-btn px-5 py-2 text-xs font-black text-[#1a0004] rounded-xl shadow-md transition-all"
                 >
                   {modalSubmitting ? "Saving..." : t.save}
                 </button>

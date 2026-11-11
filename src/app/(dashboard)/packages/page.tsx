@@ -70,10 +70,10 @@ export default function PackagesPage() {
     // Pre-populate with first 5 groceries
     if (groceryProducts.length > 0) {
       setPackageItems(
-        groceryProducts.slice(0, 5).map((p) => ({
-          productId: p.id,
+        groceryProducts.slice(0, 6).map((g) => ({
+          productId: g.id,
           quantity: 1,
-          unitValue: Number(p.selling_price),
+          unitValue: Number(g.selling_price) || 50,
         }))
       );
     } else {
@@ -85,13 +85,12 @@ export default function PackagesPage() {
 
   const handleAddItemRow = () => {
     if (groceryProducts.length === 0) return;
-    const firstProd = groceryProducts[0];
     setPackageItems([
       ...packageItems,
       {
-        productId: firstProd.id,
+        productId: groceryProducts[0].id,
         quantity: 1,
-        unitValue: Number(firstProd.selling_price),
+        unitValue: Number(groceryProducts[0].selling_price) || 50,
       },
     ]);
   };
@@ -100,39 +99,34 @@ export default function PackagesPage() {
     setPackageItems(packageItems.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (
-    index: number,
-    field: "productId" | "quantity" | "unitValue",
-    value: any
-  ) => {
+  const handleItemChange = (index: number, field: string, val: any) => {
     const updated = [...packageItems];
     if (field === "productId") {
-      const prod = groceryProducts.find((p) => p.id === Number(value));
-      updated[index] = {
-        productId: Number(value),
-        quantity: updated[index].quantity,
-        unitValue: prod ? Number(prod.selling_price) : updated[index].unitValue,
-      };
-    } else {
-      updated[index][field] = Number(value);
+      const prod = groceryProducts.find((p) => p.id === Number(val));
+      updated[index].productId = Number(val);
+      if (prod) {
+        updated[index].unitValue = Number(prod.selling_price) || 50;
+      }
+    } else if (field === "quantity") {
+      updated[index].quantity = Number(val);
+    } else if (field === "unitValue") {
+      updated[index].unitValue = Number(val);
     }
     setPackageItems(updated);
   };
 
-  // Calculate live package total
   const calculatedItemsTotal = packageItems.reduce(
-    (sum, it) => sum + it.quantity * it.unitValue,
+    (sum, item) => sum + item.quantity * item.unitValue,
     0
   );
-  const calculatedGrandTotal = calculatedItemsTotal + Number(bonusAmount);
+  const calculatedGrandTotal = calculatedItemsTotal + Number(bonusAmount || 0);
 
   const handleSubmitPackage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!packageName || !packageTamilName || packageItems.length === 0) {
-      setError("Please fill package name and add at least one grocery item");
+    if (packageItems.length === 0) {
+      setError("Please add at least one grocery product to the package.");
       return;
     }
-
     setSubmitting(true);
     setError(null);
 
@@ -144,8 +138,8 @@ export default function PackagesPage() {
           name: packageName,
           tamilName: packageTamilName,
           schemeId: selectedSchemeId ? Number(selectedSchemeId) : null,
+          bonusAmount: Number(bonusAmount),
           items: packageItems,
-          bonusAmount,
         }),
       });
 
@@ -157,7 +151,7 @@ export default function PackagesPage() {
       setIsModalOpen(false);
       fetchData();
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      setError(err.message || "Failed to save package");
     } finally {
       setSubmitting(false);
     }
@@ -168,93 +162,100 @@ export default function PackagesPage() {
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
-            {t.packages}
+          <h1 className="text-xl sm:text-2xl font-black text-amber-300 font-serif tracking-wide drop-shadow flex items-center gap-2">
+            <Boxes className="h-6 w-6 text-amber-400" />
+            <span>{t.packages}</span>
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-amber-200/70 mt-1">
             {language === "ta"
-              ? "தீபாவளி பண்டிகை மளிகைத் தொகுப்பு உருவாக்கம் & திட்ட இணைப்பு"
-              : "Design grocery gift hampers, calculate values and assign to chit schemes"}
+              ? "தீபாவளி சிறப்பு மளிகைப் பரிசு தொகுப்புகள் & போனஸ் பொருட்கள் சேர்க்கை"
+              : "Build custom supermarket hampers, festival grocery packages and bonus allocations"}
           </p>
         </div>
 
         <button
           onClick={handleOpenBuilder}
-          className="flex items-center gap-2 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-amber-500/25 transition-all"
+          className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] text-xs font-black px-4 py-2 rounded-xl shadow-md transition-all"
         >
           <Plus className="h-4 w-4" />
-          <span>{language === "ta" ? "+ புதிய மளிகை பேக்கேஜ்" : "+ New Package Builder"}</span>
+          <span>{language === "ta" ? "புதிய தொகுப்பு உருவாக்கு" : "Build Grocery Package"}</span>
         </button>
       </div>
 
-      {/* Package Templates List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Packages Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {packages.map((pkg) => (
           <div
             key={pkg.id}
-            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4 hover:border-amber-300 transition-all"
+            className="maroon-card rounded-3xl p-6 shadow-xl flex flex-col justify-between hover:border-amber-400/50 transition-all space-y-4"
           >
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full inline-block mb-1">
-                  {pkg.scheme_name ? `Assigned to: ${pkg.scheme_name}` : "General Package"}
+            <div>
+              <div className="flex justify-between items-start gap-2">
+                <div>
+                  <span className="font-mono text-[10px] font-bold text-amber-400/80 uppercase tracking-widest block">
+                    {pkg.code}
+                  </span>
+                  <h3 className="font-black text-base text-amber-200 font-serif mt-0.5">
+                    {language === "ta" && pkg.tamil_name ? pkg.tamil_name : pkg.name}
+                  </h3>
+                  <p className="text-xs text-amber-300/70">{pkg.name}</p>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  {pkg.scheme_name || "All Schemes"}
                 </span>
-                <h3 className="text-lg font-black text-brand-blue">
-                  {pkg.tamil_name}
-                </h3>
-                <h4 className="text-xs font-semibold text-slate-500">{pkg.name}</h4>
               </div>
 
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 block">Package Total Value</span>
-                <span className="text-xl font-black text-emerald-700">
-                  {formatINR(pkg.net_package_value || pkg.total_package_value)}
+              {/* Total Value Banner */}
+              <div className="my-4 p-4 rounded-2xl bg-[#1e0004] border border-amber-500/25 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-amber-400/70 tracking-wider block">
+                    {language === "ta" ? "மொத்த பரிசு மதிப்பு" : "Total Package Value"}
+                  </span>
+                  <span className="text-2xl font-black text-amber-300 font-serif">
+                    {formatINR(pkg.net_package_value || pkg.total_items_value)}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-amber-400/70 tracking-wider block">
+                    {language === "ta" ? "பொருட்கள்" : "Total Items"}
+                  </span>
+                  <span className="text-base font-black text-amber-200 font-serif">
+                    {pkg.items?.length || 0} Products
+                  </span>
+                </div>
+              </div>
+
+              {/* Grocery Item list preview */}
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                <span className="text-[11px] font-bold text-amber-300/80 block mb-1">
+                  Hamper Contents:
                 </span>
+                {pkg.items && pkg.items.length > 0 ? (
+                  pkg.items.map((item: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex justify-between items-center text-xs py-1 px-2.5 rounded-lg bg-[#240005] border border-amber-500/15 text-amber-100"
+                    >
+                      <span className="font-semibold truncate max-w-[170px]">
+                        {item.tamil_name || item.product_name}
+                      </span>
+                      <span className="font-mono text-amber-400 font-bold shrink-0">
+                        {item.quantity} {item.unit || "unit"}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-amber-300/50 italic">No products assigned.</p>
+                )}
               </div>
             </div>
 
-            {/* Grocery Products Table inside Package */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-semibold uppercase">
-                  <tr>
-                    <th className="py-2 px-3">#</th>
-                    <th className="py-2 px-3">Item (பொருள்)</th>
-                    <th className="py-2 px-3 text-center">Qty</th>
-                    <th className="py-2 px-3 text-right">Unit Price</th>
-                    <th className="py-2 px-3 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {(pkg.items || []).map((it: any, idx: number) => (
-                    <tr key={it.id || idx} className="hover:bg-slate-50/50">
-                      <td className="py-2 px-3 font-mono text-slate-400">{idx + 1}</td>
-                      <td className="py-2 px-3">
-                        <span className="font-bold text-slate-800">{it.tamil_product_name}</span>
-                        <span className="text-[10px] text-slate-400 block">{it.product_name}</span>
-                      </td>
-                      <td className="py-2 px-3 text-center font-bold text-slate-700">
-                        {it.quantity} {it.unit}
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono text-slate-600">
-                        {formatINR(it.unit_value)}
-                      </td>
-                      <td className="py-2 px-3 text-right font-extrabold text-slate-900">
-                        {formatINR(it.total_value)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Bottom summary badge */}
-            <div className="flex justify-between items-center text-xs pt-2">
-              <span className="font-semibold text-slate-500">
-                Total {pkg.items?.length || 0} festive grocery essentials
+            <div className="pt-3 border-t border-amber-500/20 flex items-center justify-between text-xs">
+              <span className="text-[11px] text-amber-400/80 font-bold">
+                Bonus Goods: +{formatINR(pkg.bonus_amount || 0)}
               </span>
-              <span className="font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl">
-                Ready for Diwali Distribution
+              <span className="text-[11px] text-amber-300 font-medium">
+                Standard Diwali Pack
               </span>
             </div>
           </div>
@@ -263,56 +264,61 @@ export default function PackagesPage() {
 
       {/* Package Builder Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8">
-            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-brand-blue to-blue-900 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-2xl erp-modal-box overflow-hidden my-8 shadow-2xl border border-amber-500/40">
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#3e010b] via-[#4d0210] to-[#2b0006] text-amber-200 border-b border-amber-500/30">
               <div className="flex items-center gap-2">
                 <Boxes className="h-5 w-5 text-amber-400" />
-                <h3 className="text-base font-bold">Grocery Package Builder</h3>
+                <h3 className="text-sm font-bold font-serif tracking-wide">
+                  Grocery Package Builder
+                </h3>
               </div>
-              <button onClick={() => setIsModalOpen(false)}>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-amber-400/80 hover:text-amber-300 p-1 rounded-lg hover:bg-amber-500/10"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitPackage} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleSubmitPackage} className="p-6 space-y-4 text-xs bg-[#240005]">
               {error && (
-                <div className="p-3 bg-rose-50 text-rose-700 rounded-xl border border-rose-200">
+                <div className="p-3 bg-rose-950/80 text-rose-300 rounded-xl border border-rose-500/40">
                   {error}
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Package Name (Tamil) *</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Package Name (Tamil) *</label>
                   <input
                     type="text"
                     required
                     value={packageTamilName}
                     onChange={(e) => setPackageTamilName(e.target.value)}
                     placeholder="e.g. தீபாவளி மெகா பம்பர் பேக்கேஜ்"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 font-bold"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Package Name (English) *</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Package Name (English) *</label>
                   <input
                     type="text"
                     required
                     value={packageName}
                     onChange={(e) => setPackageName(e.target.value)}
                     placeholder="e.g. Diwali Mega Bumper Package"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Assign to Chit Scheme</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Assign to Chit Scheme</label>
                   <select
                     value={selectedSchemeId}
                     onChange={(e) => setSelectedSchemeId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200"
                   >
                     <option value="">General (All Schemes)</option>
                     {schemes.map((s) => (
@@ -325,13 +331,13 @@ export default function PackagesPage() {
               </div>
 
               {/* Items List */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="space-y-2 pt-2 border-t border-amber-500/20">
                 <div className="flex justify-between items-center">
-                  <span className="font-extrabold text-slate-800 text-sm">Grocery Products in Package</span>
+                  <span className="font-extrabold text-amber-300 font-serif text-sm">Grocery Products in Package</span>
                   <button
                     type="button"
                     onClick={handleAddItemRow}
-                    className="flex items-center gap-1 text-xs font-bold text-brand-blue hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg"
+                    className="flex items-center gap-1 text-xs font-bold text-amber-300 hover:text-amber-100 bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-xl transition-colors"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>+ Add Product Row</span>
@@ -342,13 +348,13 @@ export default function PackagesPage() {
                   {packageItems.map((item, idx) => (
                     <div
                       key={idx}
-                      className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200"
+                      className="grid grid-cols-12 gap-2 items-center bg-[#1e0004] p-2.5 rounded-xl border border-amber-500/25"
                     >
                       <div className="col-span-5">
                         <select
                           value={item.productId}
                           onChange={(e) => handleItemChange(idx, "productId", e.target.value)}
-                          className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold"
+                          className="w-full px-2 py-1.5 bg-[#180003] border border-amber-500/30 rounded-lg text-xs font-bold text-amber-200"
                         >
                           {groceryProducts.map((p) => (
                             <option key={p.id} value={p.id}>
@@ -365,7 +371,7 @@ export default function PackagesPage() {
                           step="0.5"
                           value={item.quantity}
                           onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
-                          className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center"
+                          className="w-full px-2 py-1.5 bg-[#180003] border border-amber-500/30 rounded-lg text-xs font-bold text-center text-amber-100"
                           title="Quantity"
                         />
                       </div>
@@ -375,12 +381,12 @@ export default function PackagesPage() {
                           type="number"
                           value={item.unitValue}
                           onChange={(e) => handleItemChange(idx, "unitValue", e.target.value)}
-                          className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-right font-mono"
+                          className="w-full px-2 py-1.5 bg-[#180003] border border-amber-500/30 rounded-lg text-xs font-bold text-right font-mono text-amber-300"
                           title="Unit Value"
                         />
                       </div>
 
-                      <div className="col-span-2 text-right font-extrabold text-slate-800">
+                      <div className="col-span-2 text-right font-extrabold text-amber-300">
                         {formatINR(item.quantity * item.unitValue)}
                       </div>
 
@@ -388,7 +394,7 @@ export default function PackagesPage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveItemRow(idx)}
-                          className="text-rose-500 hover:text-rose-700"
+                          className="text-rose-400 hover:text-rose-300 p-1"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -399,31 +405,31 @@ export default function PackagesPage() {
               </div>
 
               {/* Total Calculation Card */}
-              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 flex justify-between items-center">
+              <div className="bg-[#1e0004] p-4 rounded-2xl border border-amber-500/30 flex justify-between items-center">
                 <div>
-                  <span className="text-[11px] text-slate-500 block">Items Subtotal: {formatINR(calculatedItemsTotal)}</span>
-                  <span className="text-[11px] text-amber-800 font-bold block">+ Festival Bonus Gift: {formatINR(bonusAmount)}</span>
+                  <span className="text-[11px] text-amber-400/70 block">Items Subtotal: {formatINR(calculatedItemsTotal)}</span>
+                  <span className="text-[11px] text-amber-300 font-bold block">+ Festival Bonus Gift: {formatINR(bonusAmount)}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-bold text-slate-500 block">Total Calculated Hamper Value:</span>
-                  <span className="text-xl font-black text-emerald-800">
+                  <span className="text-xs font-bold text-amber-400/80 block">Total Calculated Hamper Value:</span>
+                  <span className="text-xl font-black text-amber-300 font-serif">
                     {formatINR(calculatedGrandTotal)}
                   </span>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-2 border-t border-amber-500/20">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 font-semibold text-amber-300/80 hover:bg-amber-500/10 rounded-xl border border-amber-500/20"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-md"
+                  className="gold-gradient-btn px-5 py-2 font-black text-[#1a0004] rounded-xl shadow-md transition-all"
                 >
                   {submitting ? "Saving..." : "Save Package Template"}
                 </button>

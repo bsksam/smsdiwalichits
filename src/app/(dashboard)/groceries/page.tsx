@@ -15,6 +15,7 @@ import {
   CheckCircle,
   X,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
 export default function GroceriesPage() {
@@ -113,130 +114,128 @@ export default function GroceriesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header bar */}
+      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
-            {t.groceries}
+          <h1 className="text-xl sm:text-2xl font-black text-amber-300 font-serif tracking-wide drop-shadow flex items-center gap-2">
+            <PackageOpen className="h-6 w-6 text-amber-400" />
+            <span>{t.groceries}</span>
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-amber-200/70 mt-1">
             {language === "ta"
-              ? "தீபாவளி சிட் மளிகைப் பொருட்கள், இருப்பு மேலாண்மை & பார் குறியீடுகள்"
-              : "Manage supermarket grocery catalog, stock levels, wholesale prices and barcodes"}
+              ? "தீபாவளி சிட் மளிகைப் பொருட்கள் சரக்கு இருப்பு & விலை நிர்ணயம்"
+              : "Manage supermarket products, unit quantities, purchase & festival chit rates"}
           </p>
         </div>
 
         <button
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 bg-gradient-to-r from-brand-blue to-blue-700 hover:from-blue-800 hover:to-blue-900 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-900/20 transition-all"
+          className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] text-xs font-black px-4 py-2 rounded-xl shadow-md transition-all"
         >
           <Plus className="h-4 w-4" />
           <span>{language === "ta" ? "+ புதிய மளிகைப் பொருள்" : "+ Add Grocery Item"}</span>
         </button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      {/* Filters and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center gap-3 maroon-card p-4 rounded-2xl shadow-md">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-amber-400/60" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={language === "ta" ? "மளிகைப் பொருள் பெயர், தமிழ் பெயர் அல்லது பார் கோடு..." : "Search product by English or Tamil name, barcode..."}
-            className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue"
+            placeholder={language === "ta" ? "மளிகைப் பொருள் பெயர், பார்கோடு அல்லது வகை..." : "Search product name, barcode, unit..."}
+            className="w-full pl-10 pr-4 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 focus:ring-2 focus:ring-amber-400"
           />
         </div>
 
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="w-full sm:w-48 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium"
+          className="w-full sm:w-48 px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200"
         >
-          <option value="">All Categories</option>
+          <option value="">All Categories (அனைத்தும்)</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name} ({c.tamil_name})
+              {language === "ta" && c.tamil_name ? c.tamil_name : c.name}
             </option>
           ))}
         </select>
 
-        <button
-          onClick={() => setLowStockFilter(!lowStockFilter)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-            lowStockFilter
-              ? "bg-rose-600 text-white shadow-md shadow-rose-900/20"
-              : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
-          }`}
-        >
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-          <span>Low Stock Only</span>
-        </button>
+        <label className="flex items-center gap-2 text-xs font-bold text-amber-300 cursor-pointer bg-[#200004] px-3.5 py-2 rounded-xl border border-amber-500/30 whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={lowStockFilter}
+            onChange={(e) => setLowStockFilter(e.target.checked)}
+            className="rounded border-amber-500 text-amber-500 focus:ring-amber-400"
+          />
+          <span>{language === "ta" ? "குறைந்த இருப்பு மட்டும்" : "Low Stock Only"}</span>
+        </label>
       </div>
 
-      {/* Grocery Products Table */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+      {/* Products Table */}
+      <div className="maroon-card rounded-3xl overflow-hidden shadow-xl border border-amber-500/25">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 font-semibold uppercase border-b border-slate-200">
+          <table className="w-full text-left text-xs bg-[#240005]">
+            <thead className="bg-[#380109] text-amber-300 font-serif border-b border-amber-500/30">
               <tr>
-                <th className="py-3 px-4">Code</th>
-                <th className="py-3 px-4">Tamil Name & Product</th>
+                <th className="py-3 px-4">Item Code</th>
+                <th className="py-3 px-4">Product Name (Tamil & English)</th>
                 <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Unit Qty</th>
-                <th className="py-3 px-4 text-right">Cost Price</th>
-                <th className="py-3 px-4 text-right">Selling Price</th>
-                <th className="py-3 px-4 text-center">Stock Level</th>
+                <th className="py-3 px-4">Standard Unit</th>
+                <th className="py-3 px-4 text-right">Chit Value (₹)</th>
+                <th className="py-3 px-4 text-center">Available Stock</th>
                 <th className="py-3 px-4 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-amber-500/10">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-amber-300/60 font-serif">
                     Loading inventory...
                   </td>
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-amber-300/60 font-serif">
                     No grocery items found.
                   </td>
                 </tr>
               ) : (
                 products.map((p) => {
                   const isLow = p.stock_quantity <= p.min_stock_alert;
+
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-amber-700">
-                        {p.code}
+                    <tr key={p.id} className="hover:bg-amber-500/5 transition-colors text-amber-100">
+                      <td className="py-3 px-4 font-mono font-bold text-amber-400">
+                        {p.product_code}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-extrabold text-slate-900 text-sm">
-                          {p.tamil_name}
+                        <div className="font-bold text-amber-100 text-sm">
+                          {p.tamil_name || p.name}
                         </div>
-                        <div className="text-slate-500 text-[11px] font-medium">
-                          {p.name}
-                        </div>
+                        {p.tamil_name && (
+                          <div className="text-[11px] text-amber-300/70 font-sans">
+                            {p.name}
+                          </div>
+                        )}
                       </td>
-                      <td className="py-3 px-4 text-slate-600 font-medium">
-                        {p.category_name}
+                      <td className="py-3 px-4 text-amber-200/80">
+                        {language === "ta" && p.category_tamil ? p.category_tamil : p.category_name}
                       </td>
-                      <td className="py-3 px-4 font-bold text-slate-700">
+                      <td className="py-3 px-4 font-semibold text-amber-300 font-mono">
                         {p.unit_quantity}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-500">
-                        {formatINR(p.purchase_price)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-extrabold text-emerald-700">
+                      <td className="py-3 px-4 text-right font-black text-amber-300 text-sm">
                         {formatINR(p.selling_price)}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span
-                          className={`inline-flex items-center gap-1 font-mono font-bold px-2.5 py-0.5 rounded-full text-xs ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border font-mono ${
                             isLow
-                              ? "bg-rose-100 text-rose-800 border border-rose-300"
-                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              ? "bg-rose-950/80 border-rose-500/40 text-rose-300"
+                              : "bg-amber-500/15 border-amber-500/30 text-amber-300"
                           }`}
                         >
                           {isLow && <AlertTriangle className="h-3 w-3 inline" />}
@@ -259,20 +258,26 @@ export default function GroceriesPage() {
 
       {/* Add Product Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-blue text-white">
-              <h3 className="text-base font-bold">
-                {language === "ta" ? "புதிய மளிகைப் பொருள் சேர்க்க" : "Add Grocery Product"}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-lg erp-modal-box overflow-hidden my-8 shadow-2xl border border-amber-500/40">
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#3e010b] via-[#4d0210] to-[#2b0006] text-amber-200 border-b border-amber-500/30">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <h3 className="text-sm font-bold font-serif tracking-wide">
+                  {language === "ta" ? "புதிய மளிகைப் பொருள் சேர்க்க" : "Add Grocery Product"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-amber-400/80 hover:text-amber-300 p-1 rounded-lg hover:bg-amber-500/10"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleModalSubmit} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleModalSubmit} className="p-6 space-y-4 text-xs bg-[#240005]">
               {error && (
-                <div className="flex items-center gap-2 p-3 bg-rose-50 text-rose-700 rounded-xl border border-rose-200">
+                <div className="flex items-center gap-2 p-3 bg-rose-950/80 text-rose-300 rounded-xl border border-rose-500/40">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -280,7 +285,7 @@ export default function GroceriesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
-                  <label className="block font-bold text-slate-700 mb-1">
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">
                     பொருள் தமிழ் பெயர் (Tamil Name) *
                   </label>
                   <input
@@ -289,12 +294,12 @@ export default function GroceriesPage() {
                     value={formData.tamilName}
                     onChange={(e) => setFormData({ ...formData, tamilName: e.target.value })}
                     placeholder="e.g. உளுத்தம் பருப்பு / Toor Dal"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 font-bold"
                   />
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block font-bold text-slate-700 mb-1">
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">
                     Product Name (English) *
                   </label>
                   <input
@@ -303,16 +308,16 @@ export default function GroceriesPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g. Urad Dal Premium"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Category</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Category</label>
                   <select
                     value={formData.categoryId}
                     onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -323,71 +328,71 @@ export default function GroceriesPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Unit Quantity *</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Unit Quantity *</label>
                   <input
                     type="text"
                     required
                     value={formData.unitQuantity}
                     onChange={(e) => setFormData({ ...formData, unitQuantity: e.target.value })}
                     placeholder="e.g. 1 kg, 500 gm, 1 litre"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Purchase Cost (₹)</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Purchase Cost (₹)</label>
                   <input
                     type="number"
                     value={formData.purchasePrice}
                     onChange={(e) => setFormData({ ...formData, purchasePrice: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Selling Value in Chit (₹) *</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Selling Value in Chit (₹) *</label>
                   <input
                     type="number"
                     required
                     value={formData.sellingPrice}
                     onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-brand-blue"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl font-black text-amber-300"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Initial Stock Quantity</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Initial Stock Quantity</label>
                   <input
                     type="number"
                     value={formData.stockQuantity}
                     onChange={(e) => setFormData({ ...formData, stockQuantity: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Low Stock Alert Threshold</label>
+                  <label className="block font-bold text-amber-300 mb-1 font-serif">Low Stock Alert Threshold</label>
                   <input
                     type="number"
                     value={formData.minStockAlert}
                     onChange={(e) => setFormData({ ...formData, minStockAlert: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-amber-500/20">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-4 py-2 font-semibold text-amber-300/80 hover:bg-amber-500/10 rounded-xl border border-amber-500/20"
                 >
                   {t.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 font-bold bg-brand-blue hover:bg-blue-800 text-white rounded-xl shadow-md"
+                  className="gold-gradient-btn px-5 py-2 font-black text-[#1a0004] rounded-xl shadow-md transition-all"
                 >
                   {submitting ? "Saving..." : t.save}
                 </button>

@@ -14,6 +14,7 @@ import {
   AlertCircle,
   FileText,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -71,10 +72,11 @@ export default function SettingsPage() {
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
-            {t.settings}
+          <h1 className="text-xl sm:text-2xl font-black text-amber-300 font-serif tracking-wide drop-shadow flex items-center gap-2">
+            <Settings className="h-6 w-6 text-amber-400" />
+            <span>{t.settings}</span>
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-amber-200/70 mt-1">
             {language === "ta"
               ? "கடை விவரங்கள், ரசீது பிரிண்டர், வாட்ஸ்அப் செய்தி வார்ப்புருக்கள் & தரவுத்தள அமைப்புகள்"
               : "Business profile, thermal receipt formatting, WhatsApp templates and Turso SQLite configuration"}
@@ -84,7 +86,7 @@ export default function SettingsPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 bg-brand-blue hover:bg-blue-800 text-white px-5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-900/20 transition-all"
+          className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] px-5 py-2 rounded-xl text-xs sm:text-sm font-black shadow-md transition-all"
         >
           <Save className="h-4 w-4" />
           <span>{saving ? "Saving..." : "Save Settings"}</span>
@@ -92,97 +94,97 @@ export default function SettingsPage() {
       </div>
 
       {successMsg && (
-        <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold">
-          <CheckCircle className="h-4 w-4 text-emerald-600" />
+        <div className="flex items-center gap-2 p-3 bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold">
+          <CheckCircle className="h-4 w-4 text-emerald-400" />
           <span>{successMsg}</span>
         </div>
       )}
 
       <form onSubmit={handleSave} className="space-y-6 text-xs">
         {/* Shop Business Profile */}
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm space-y-4">
-          <h2 className="text-sm font-extrabold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-brand-blue" />
+        <div className="maroon-card rounded-3xl p-6 shadow-xl space-y-4">
+          <h2 className="text-sm font-extrabold text-amber-300 font-serif border-b border-amber-500/20 pb-3 flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-amber-400" />
             <span>சூப்பர் மார்க்கெட் விவரங்கள் (Supermarket Business Profile)</span>
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 mb-1">வணிகப் பெயர் (Supermarket Name)</label>
+              <label className="block font-bold text-amber-300 mb-1 font-serif">வணிகப் பெயர் (Supermarket Name)</label>
               <input
                 type="text"
                 value={settings.shop_name || ""}
                 onChange={(e) => setSettings({ ...settings, shop_name: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
+                className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-100"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 mb-1">முழு முகவரி (Full Address)</label>
+              <label className="block font-bold text-amber-300 mb-1 font-serif">முழு முகவரி (Full Address)</label>
               <input
                 type="text"
                 value={settings.shop_address || ""}
                 onChange={(e) => setSettings({ ...settings, shop_address: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">தொடர்பு எண்கள் (Contact Phones)</label>
+              <label className="block font-bold text-amber-300 mb-1 font-serif">தொடர்பு எண்கள் (Contact Phones)</label>
               <input
                 type="text"
                 value={settings.shop_phone || ""}
                 onChange={(e) => setSettings({ ...settings, shop_phone: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono"
+                className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl font-mono text-amber-200"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">GSTIN / Registration Number</label>
+              <label className="block font-bold text-amber-300 mb-1 font-serif">GSTIN / Registration Number</label>
               <input
                 type="text"
                 value={settings.shop_gst || ""}
                 onChange={(e) => setSettings({ ...settings, shop_gst: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono"
+                className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl font-mono text-amber-200"
               />
             </div>
           </div>
         </div>
 
         {/* WhatsApp Message Templates */}
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm space-y-4">
-          <h2 className="text-sm font-extrabold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-emerald-600" />
+        <div className="maroon-card rounded-3xl p-6 shadow-xl space-y-4">
+          <h2 className="text-sm font-extrabold text-amber-300 font-serif border-b border-amber-500/20 pb-3 flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-emerald-400" />
             <span>வாட்ஸ்அப் செய்தி வார்ப்புருக்கள் (WhatsApp Message Templates)</span>
           </h2>
 
           <div className="space-y-4">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">
+              <label className="block font-bold text-amber-300 mb-1 font-serif">
                 தவணை ரசீது செய்தி (Payment Receipt WhatsApp Template)
               </label>
               <textarea
                 rows={3}
                 value={settings.whatsapp_payment_template || ""}
                 onChange={(e) => setSettings({ ...settings, whatsapp_payment_template: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[11px]"
+                className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl font-mono text-[11px] text-amber-100"
               />
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-amber-400/60">
                 Variables: &#123;CUSTOMER_NAME&#125;, &#123;SCHEME_NAME&#125;, &#123;INST_NUM&#125;, &#123;AMOUNT&#125;, &#123;RECEIPT_NO&#125;, &#123;SHOP_NAME&#125;
               </span>
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">
+              <label className="block font-bold text-amber-300 mb-1 font-serif">
                 மாதத் தவணை நினைவூட்டல் (Installment Due Reminder Template)
               </label>
               <textarea
                 rows={3}
                 value={settings.whatsapp_reminder_template || ""}
                 onChange={(e) => setSettings({ ...settings, whatsapp_reminder_template: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[11px]"
+                className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl font-mono text-[11px] text-amber-100"
               />
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-amber-400/60">
                 Variables: &#123;CUSTOMER_NAME&#125;, &#123;SCHEME_NAME&#125;, &#123;AMOUNT&#125;, &#123;DUE_DATE&#125;, &#123;SHOP_NAME&#125;
               </span>
             </div>
@@ -190,24 +192,21 @@ export default function SettingsPage() {
         </div>
 
         {/* Database & Cloud Architecture Details */}
-        <div className="rounded-3xl border border-slate-200/80 bg-slate-900 text-white p-6 shadow-sm space-y-4">
-          <h2 className="text-sm font-extrabold text-amber-400 border-b border-slate-800 pb-2 flex items-center gap-2">
+        <div className="maroon-card rounded-3xl p-6 shadow-xl space-y-4">
+          <h2 className="text-sm font-extrabold text-amber-300 font-serif border-b border-amber-500/20 pb-3 flex items-center gap-2">
             <Database className="h-4 w-4 text-amber-400" />
             <span>Database & Cloud Architecture (Turso / libSQL SQLite)</span>
           </h2>
 
-          <div className="space-y-2 text-slate-300 text-[11px] leading-relaxed">
+          <div className="space-y-2 text-amber-200/80 text-[11px] leading-relaxed">
             <p>
-              <strong className="text-white">Active Database Engine:</strong> SQLite via <code className="text-amber-300">@libsql/client</code> with Drizzle ORM.
+              <strong className="text-amber-100">Active Database Engine:</strong> SQLite via <code className="text-amber-300 bg-[#1e0004] px-1 py-0.5 rounded">@libsql/client</code> with Drizzle ORM.
             </p>
             <p>
-              <strong className="text-white">Local Development:</strong> Uses persistent SQLite file (<code className="text-amber-300">file:./local.db</code>).
+              <strong className="text-amber-100">Live Production Storage:</strong> Persistent cloud SQLite hosted on Turso (<code className="text-amber-300 bg-[#1e0004] px-1 py-0.5 rounded">diwalichit-bsksam.aws-ap-south-1.turso.io</code>).
             </p>
             <p>
-              <strong className="text-white">Vercel Production:</strong> Configured for persistent cloud SQLite hosted on Turso (<code className="text-amber-300">TURSO_DATABASE_URL="libsql://your-db-org.turso.io"</code>). Never stores database on Vercel ephemeral local disk.
-            </p>
-            <p>
-              <strong className="text-white">Financial Integrity:</strong> Transaction-safe payments, non-destructive soft deletes, and full immutable audit trails.
+              <strong className="text-amber-100">Financial Integrity:</strong> Transaction-safe payments, non-destructive soft deletes, and full immutable audit trails.
             </p>
           </div>
         </div>

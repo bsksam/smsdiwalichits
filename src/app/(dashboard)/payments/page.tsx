@@ -15,6 +15,7 @@ import {
   X,
   CreditCard,
   FileSpreadsheet,
+  Eye,
 } from "lucide-react";
 import { QuickPaymentModal } from "@/components/ui/QuickPaymentModal";
 import * as XLSX from "xlsx";
@@ -98,23 +99,35 @@ export default function PaymentsPage() {
       "Receipt Number": p.receipt_number,
       "Customer Name": p.customer_name,
       "Mobile": p.customer_mobile,
-      "Scheme": p.scheme_name,
-      "Passbook": p.passbook_number,
+      "Scheme Name": p.scheme_name,
       "Installment #": p.installment_number,
-      "Amount": p.amount,
-      "Discount": p.discount,
-      "Late Fee": p.late_fee,
-      "Total Amount": p.total_amount,
+      "Amount (₹)": p.total_amount,
       "Payment Mode": p.payment_mode,
-      "Transaction Ref": p.transaction_ref || "-",
-      "Payment Date": p.payment_date,
-      "Collected By": p.collected_by_name || "-",
+      "Reference": p.transaction_ref || "-",
+      "Payment Date": formatDate(p.payment_date),
       "Status": p.status,
     }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Payments");
-    XLSX.writeFile(wb, "Diwali_Chit_Payment_Collections.xlsx");
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Collections");
+    XLSX.writeFile(workbook, `Diwali_Chit_Receipts_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const handleShareWhatsApp = (p: any) => {
+    const msg = generatePaymentReceiptWhatsAppMessage({
+      customerName: p.customer_name,
+      schemeName: p.scheme_name,
+      installmentNumber: p.installment_number,
+      amount: p.total_amount,
+      paymentMode: p.payment_mode,
+      receiptNumber: p.receipt_number,
+      paymentDate: formatDate(p.payment_date),
+      shopName: "SRI LAKSHMI SUPERMARKET",
+      shopPhone: "+91 98765 43210",
+    });
+    const url = getWhatsAppShareUrl(p.customer_mobile, msg);
+    window.open(url, "_blank");
   };
 
   return (
@@ -122,10 +135,11 @@ export default function PaymentsPage() {
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
-            {t.payments}
+          <h1 className="text-xl sm:text-2xl font-black text-amber-300 font-serif tracking-wide drop-shadow flex items-center gap-2">
+            <Receipt className="h-6 w-6 text-amber-400" />
+            <span>{t.payments}</span>
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-amber-200/70 mt-1">
             {language === "ta"
               ? "தவணை வசூல் பதிவுகள், ரசீது அச்சிடுதல் & வாட்ஸ்அப் பகிர்வு"
               : "Installment collection ledger, official thermal receipts and WhatsApp sharing"}
@@ -135,15 +149,15 @@ export default function PaymentsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={exportToExcel}
-            className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all"
+            className="flex items-center gap-2 border border-amber-500/30 bg-[#250005] hover:bg-amber-500/10 text-amber-200 px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition-all"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+            <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
             <span>Excel Export</span>
           </button>
 
           <button
             onClick={() => setQuickPayOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-md shadow-amber-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+            className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] font-black text-xs sm:text-sm px-4 py-2 rounded-xl shadow-md transition-all"
           >
             <Plus className="h-4 w-4" />
             <span>{t.quickPayment}</span>
@@ -152,22 +166,22 @@ export default function PaymentsPage() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-center gap-3 maroon-card p-4 rounded-2xl shadow-md">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-amber-400/60" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={language === "ta" ? "ரசீது எண், வாடிக்கையாளர் பெயர் அல்லது மொபைல்..." : "Search by receipt number, customer name or mobile..."}
-            className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full pl-10 pr-4 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 focus:ring-2 focus:ring-amber-400"
           />
         </div>
 
         <select
           value={paymentModeFilter}
           onChange={(e) => setPaymentModeFilter(e.target.value)}
-          className="w-full sm:w-44 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium"
+          className="w-full sm:w-48 px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200"
         >
           <option value="">All Payment Modes</option>
           <option value="cash">Cash (ரொக்கம்)</option>
@@ -178,10 +192,10 @@ export default function PaymentsPage() {
       </div>
 
       {/* Payments Table */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+      <div className="maroon-card rounded-3xl overflow-hidden shadow-xl border border-amber-500/25">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 font-semibold uppercase border-b border-slate-200">
+          <table className="w-full text-left text-xs bg-[#240005]">
+            <thead className="bg-[#380109] text-amber-300 font-serif border-b border-amber-500/30">
               <tr>
                 <th className="py-3 px-4">Receipt No</th>
                 <th className="py-3 px-4">Date</th>
@@ -193,47 +207,49 @@ export default function PaymentsPage() {
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-amber-500/10">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-amber-300/60 font-serif">
                     Loading payments...
                   </td>
                 </tr>
               ) : payments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-amber-300/60 font-serif">
                     No payment records found.
                   </td>
                 </tr>
               ) : (
                 payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-amber-700">
+                  <tr key={p.id} className="hover:bg-amber-500/5 transition-colors text-amber-100">
+                    <td className="py-3 px-4 font-mono font-bold text-amber-400">
                       {p.receipt_number}
                     </td>
-                    <td className="py-3 px-4 text-slate-600">
+                    <td className="py-3 px-4 text-amber-200/80">
                       {formatDate(p.payment_date)}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-slate-800">{p.customer_name}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">{p.customer_mobile}</div>
+                      <div className="font-bold text-amber-100">{p.customer_name}</div>
+                      <div className="text-[10px] text-amber-400/60 font-mono">{p.customer_mobile}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-medium text-slate-800">{p.scheme_name}</div>
-                      <div className="text-[10px] text-amber-700 font-bold">
-                        PB: {p.passbook_number} • Inst #{p.installment_number}
-                      </div>
+                      <div className="font-semibold text-amber-200">{p.scheme_name}</div>
+                      <span className="text-[11px] font-mono text-amber-400 font-bold">
+                        Installment #{p.installment_number}
+                      </span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="uppercase text-[10px] font-bold bg-slate-100 px-2 py-0.5 rounded text-slate-700">
+                      <span className="uppercase text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300">
                         {p.payment_mode}
                       </span>
                       {p.transaction_ref && (
-                        <div className="text-[9px] text-slate-400 font-mono mt-0.5">{p.transaction_ref}</div>
+                        <div className="text-[10px] text-amber-400/60 font-mono mt-0.5 truncate max-w-[120px]">
+                          {p.transaction_ref}
+                        </div>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-right font-extrabold text-emerald-700 text-sm">
+                    <td className="py-3 px-4 text-right font-black text-amber-300 text-sm">
                       {formatINR(p.total_amount)}
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -245,40 +261,23 @@ export default function PaymentsPage() {
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => setViewingReceipt(p)}
-                          title="View / Print Receipt"
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-brand-blue hover:bg-slate-100"
+                          title="View & Print Official Receipt"
+                          className="p-1.5 rounded-lg text-amber-400 hover:text-amber-200 hover:bg-amber-500/15 border border-amber-500/20"
                         >
                           <Printer className="h-4 w-4" />
                         </button>
-
-                        <a
-                          href={getWhatsAppShareUrl(
-                            p.customer_mobile,
-                            generatePaymentReceiptWhatsAppMessage({
-                              customerName: p.customer_name,
-                              schemeName: p.scheme_name,
-                              receiptNumber: p.receipt_number,
-                              installmentNumber: p.installment_number,
-                              amount: p.total_amount,
-                              paymentMode: p.payment_mode,
-                              paymentDate: formatDate(p.payment_date),
-                              shopName: "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்",
-                              shopPhone: "+91 98765 43210",
-                            })
-                          )}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Share on WhatsApp"
-                          className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                        <button
+                          onClick={() => handleShareWhatsApp(p)}
+                          title="Share Receipt on WhatsApp"
+                          className="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-500/20"
                         >
                           <Share2 className="h-4 w-4" />
-                        </a>
-
+                        </button>
                         {p.status === "completed" && (
                           <button
                             onClick={() => handleOpenReverse(p)}
                             title="Reverse Transaction with Audit"
-                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
+                            className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-500/20"
                           >
                             <RotateCcw className="h-4 w-4" />
                           </button>
@@ -293,76 +292,84 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {/* Official Thermal / Standard Receipt Modal */}
+      {/* Receipt Modal (Thermal Receipt View in Dark Luxury) */}
       {viewingReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden font-sans">
-            <div className="p-6 border-b border-dashed border-slate-300 text-center space-y-1">
-              <span className="text-xs font-black text-rose-800 uppercase tracking-widest">
-                OFFICIAL PAYMENT RECEIPT
-              </span>
-              <h2 className="text-lg font-black text-brand-blue">
-                ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்
-              </h2>
-              <p className="text-xs font-bold text-slate-700">SRI LAKSHMI SUPERMARKET</p>
-              <p className="text-[10px] text-slate-500">
-                124, Bazaar Main Road, Near Clock Tower, Salem - 636001
-              </p>
-              <p className="text-[10px] text-slate-500">Phone: 98765 43210 | GSTIN: 33AABCS1429B1Z8</p>
-            </div>
-
-            <div className="p-6 space-y-3 text-xs">
-              <div className="flex justify-between border-b border-slate-100 pb-2">
-                <span className="text-slate-500">Receipt No:</span>
-                <span className="font-mono font-bold text-amber-800">{viewingReceipt.receipt_number}</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-sm erp-modal-box overflow-hidden my-8 shadow-2xl border border-amber-500/40">
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#3e010b] via-[#4d0210] to-[#2b0006] text-amber-200 border-b border-amber-500/30">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-amber-400" />
+                <h3 className="text-sm font-bold font-serif">Official Payment Receipt</h3>
               </div>
-              <div className="flex justify-between border-b border-slate-100 pb-2">
-                <span className="text-slate-500">Date & Time:</span>
-                <span className="font-semibold text-slate-800">{formatDate(viewingReceipt.payment_date)}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-2">
-                <span className="text-slate-500">Customer Name:</span>
-                <span className="font-bold text-slate-900">{viewingReceipt.customer_name}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-2">
-                <span className="text-slate-500">Mobile:</span>
-                <span className="font-mono text-slate-800">{viewingReceipt.customer_mobile}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-2">
-                <span className="text-slate-500">Scheme & Passbook:</span>
-                <span className="font-semibold text-slate-800">{viewingReceipt.scheme_name} ({viewingReceipt.passbook_number})</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-2">
-                <span className="text-slate-500">Installment Number:</span>
-                <span className="font-bold text-brand-blue">Installment #{viewingReceipt.installment_number}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 pb-2">
-                <span className="text-slate-500">Payment Mode:</span>
-                <span className="font-bold uppercase text-slate-800">{viewingReceipt.payment_mode}</span>
-              </div>
-
-              <div className="flex justify-between items-center pt-2 text-sm font-black text-emerald-800">
-                <span>TOTAL AMOUNT RECEIVED:</span>
-                <span className="text-lg">{formatINR(viewingReceipt.total_amount)}</span>
-              </div>
-
-              <div className="pt-4 text-center border-t border-dashed border-slate-300 text-[10px] text-slate-500 space-y-1">
-                <p>Thank you for saving with Sri Lakshmi Supermarket!</p>
-                <p>தீபாவளி மளிகை சிட் சேமிப்பில் இணைந்தமைக்கு நன்றி!</p>
-                <p className="font-mono text-[9px] text-slate-400">Computer Generated Receipt • Valid without signature</p>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
               <button
                 onClick={() => setViewingReceipt(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="text-amber-400/80 hover:text-amber-300 p-1 rounded-lg hover:bg-amber-500/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 bg-[#240005] text-xs font-mono">
+              <div className="text-center border-b border-dashed border-amber-500/30 pb-3">
+                <h4 className="font-black text-sm text-amber-300 font-serif">SRI LAKSHMI SUPERMARKET</h4>
+                <p className="text-[10px] text-amber-200/70">124, Bazaar Main Road, Salem - 636001</p>
+                <p className="text-[10px] text-amber-200/70">Phone: +91 98765 43210</p>
+                <p className="text-[10px] font-bold text-amber-400 mt-1">DIWALI CHIT FUND RECEIPT</p>
+              </div>
+
+              <div className="space-y-1.5 text-amber-100">
+                <div className="flex justify-between">
+                  <span className="text-amber-400/70">Receipt No:</span>
+                  <span className="font-bold text-amber-300">{viewingReceipt.receipt_number}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-400/70">Date:</span>
+                  <span>{formatDate(viewingReceipt.payment_date)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-400/70">Customer:</span>
+                  <span className="font-bold">{viewingReceipt.customer_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-400/70">Mobile:</span>
+                  <span>{viewingReceipt.customer_mobile}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-400/70">Scheme:</span>
+                  <span className="font-semibold text-amber-200">{viewingReceipt.scheme_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-400/70">Installment #:</span>
+                  <span className="font-bold text-amber-400">#{viewingReceipt.installment_number}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-400/70">Payment Mode:</span>
+                  <span className="uppercase">{viewingReceipt.payment_mode}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-b border-dashed border-amber-500/30 py-3 my-2 flex justify-between items-center text-sm">
+                <span className="font-bold text-amber-300">Total Collected:</span>
+                <span className="text-lg font-black text-amber-300 font-serif">{formatINR(viewingReceipt.total_amount)}</span>
+              </div>
+
+              <div className="text-center text-[10px] text-amber-300/70 space-y-0.5 pt-2">
+                <p>Thank you for saving with Sri Lakshmi Supermarket!</p>
+                <p>தீபாவளி மளிகை சிட் சேமிப்பில் இணைந்தமைக்கு நன்றி!</p>
+                <p className="font-mono text-[9px] text-amber-400/50">Computer Generated Receipt • Valid without signature</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-[#1e0004] border-t border-amber-500/20 flex justify-end gap-2">
+              <button
+                onClick={() => setViewingReceipt(null)}
+                className="px-4 py-2 text-xs font-semibold text-amber-300/80 hover:bg-amber-500/10 rounded-xl border border-amber-500/20"
               >
                 Close
               </button>
               <button
                 onClick={() => window.print()}
-                className="px-5 py-2 bg-brand-blue hover:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5"
+                className="gold-gradient-btn px-5 py-2 text-[#1a0004] font-black text-xs rounded-xl shadow-md flex items-center gap-1.5"
               >
                 <Printer className="h-4 w-4" />
                 <span>Print Receipt</span>
@@ -374,30 +381,30 @@ export default function PaymentsPage() {
 
       {/* Reversal Modal */}
       {reversalModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-rose-200 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 bg-rose-700 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md erp-modal-box overflow-hidden shadow-2xl border border-rose-500/50">
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#4d0210] to-[#2b0006] text-amber-200 border-b border-rose-500/40">
               <div className="flex items-center gap-2">
-                <RotateCcw className="h-4 w-4" />
-                <h3 className="text-sm font-bold">Reverse Transaction</h3>
+                <RotateCcw className="h-4 w-4 text-rose-400" />
+                <h3 className="text-sm font-bold font-serif">Reverse Transaction</h3>
               </div>
               <button onClick={() => setReversalModalOpen(false)}>
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4 text-amber-400/80 hover:text-amber-300" />
               </button>
             </div>
-            <form onSubmit={handleReverseSubmit} className="p-6 space-y-4 text-xs">
+            <form onSubmit={handleReverseSubmit} className="p-6 space-y-4 text-xs bg-[#240005]">
               {reversalError && (
-                <div className="p-3 bg-rose-50 text-rose-700 rounded-xl border border-rose-200">
+                <div className="p-3 bg-rose-950/80 text-rose-300 rounded-xl border border-rose-500/40">
                   {reversalError}
                 </div>
               )}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                <p className="font-bold text-slate-800">Receipt: {selectedPaymentToReverse?.receipt_number}</p>
-                <p className="text-slate-600">Customer: {selectedPaymentToReverse?.customer_name}</p>
-                <p className="text-slate-600">Amount: {formatINR(selectedPaymentToReverse?.total_amount)}</p>
+              <div className="p-3 bg-[#180003] rounded-xl border border-amber-500/20 space-y-1 text-xs">
+                <p className="font-bold text-amber-200">Receipt: {selectedPaymentToReverse?.receipt_number}</p>
+                <p className="text-amber-300/80">Customer: {selectedPaymentToReverse?.customer_name}</p>
+                <p className="text-amber-300/80">Amount: {formatINR(selectedPaymentToReverse?.total_amount)}</p>
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
+                <label className="block font-bold text-amber-300 mb-1 font-serif">
                   Mandatory Reason for Reversal *
                 </label>
                 <textarea
@@ -406,21 +413,21 @@ export default function PaymentsPage() {
                   value={reversalReason}
                   onChange={(e) => setReversalReason(e.target.value)}
                   placeholder="e.g. Cashier error, duplicate entry..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500"
+                  className="w-full px-3 py-2 bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 focus:ring-2 focus:ring-amber-400"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-amber-500/20">
                 <button
                   type="button"
                   onClick={() => setReversalModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold"
+                  className="px-4 py-2 text-amber-300/80 hover:bg-amber-500/10 rounded-xl font-semibold border border-amber-500/20"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={reversing}
-                  className="px-5 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl font-bold shadow-md shadow-rose-900/20"
+                  className="px-5 py-2 bg-gradient-to-r from-rose-700 to-rose-900 hover:from-rose-600 hover:to-rose-800 text-white rounded-xl font-bold shadow-md shadow-rose-950/50"
                 >
                   {reversing ? "Reversing..." : "Confirm Reversal"}
                 </button>

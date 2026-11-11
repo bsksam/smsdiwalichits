@@ -15,6 +15,7 @@ import {
   Share2,
   Printer,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { QuickPaymentModal } from "@/components/ui/QuickPaymentModal";
 
@@ -58,10 +59,11 @@ export default function InstallmentsPage() {
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
-            {t.installments}
+          <h1 className="text-xl sm:text-2xl font-black text-amber-300 font-serif tracking-wide drop-shadow flex items-center gap-2">
+            <CalendarCheck className="h-6 w-6 text-amber-400" />
+            <span>{t.installments}</span>
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-amber-200/70 mt-1">
             {language === "ta"
               ? "மாதாந்திர தவணை அட்டவணை, நிலுவை மற்றும் வசூல் தாள்கள்"
               : "Track monthly installments, dues, pending schedules and collection sheets"}
@@ -71,15 +73,15 @@ export default function InstallmentsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all"
+            className="flex items-center gap-2 border border-amber-500/30 bg-[#250005] hover:bg-amber-500/10 text-amber-200 px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition-all"
           >
-            <Printer className="h-4 w-4 text-slate-600" />
+            <Printer className="h-4 w-4 text-amber-400" />
             <span>{language === "ta" ? "வசூல் பட்டியல் அச்சிடு" : "Print Collection Sheet"}</span>
           </button>
 
           <button
             onClick={() => setQuickPayOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md shadow-amber-500/25 transition-all"
+            className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] font-black text-xs px-4 py-2 rounded-xl shadow-md transition-all"
           >
             <Receipt className="h-4 w-4" />
             <span>{t.quickPayment}</span>
@@ -88,20 +90,20 @@ export default function InstallmentsPage() {
       </div>
 
       {/* Status Filter Tabs */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {[
-          { key: "pending", label: language === "ta" ? "நிலுவையில் உள்ளவை" : "Pending", count: null },
-          { key: "paid", label: language === "ta" ? "செலுத்தப்பட்டவை" : "Paid", count: null },
-          { key: "overdue", label: language === "ta" ? "தாமதமான தவணைகள்" : "Overdue", count: null },
-          { key: "", label: language === "ta" ? "அனைத்து தவணைகளும்" : "All", count: null },
+          { key: "pending", label: language === "ta" ? "நிலுவையில் உள்ளவை" : "Pending" },
+          { key: "paid", label: language === "ta" ? "செலுத்தப்பட்டவை" : "Paid" },
+          { key: "overdue", label: language === "ta" ? "தாமதமான தவணைகள்" : "Overdue" },
+          { key: "", label: language === "ta" ? "அனைத்து தவணைகளும்" : "All" },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setStatusFilter(tab.key)}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               statusFilter === tab.key
-                ? "bg-brand-blue text-white shadow-md shadow-blue-900/20"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                ? "gold-gradient-btn text-[#1a0004] shadow-md font-black"
+                : "bg-[#250005] text-amber-200/80 border border-amber-500/30 hover:bg-amber-500/10"
             }`}
           >
             {tab.label}
@@ -112,7 +114,7 @@ export default function InstallmentsPage() {
         <select
           value={schemeFilter}
           onChange={(e) => setSchemeFilter(e.target.value)}
-          className="ml-auto px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl font-medium"
+          className="ml-auto px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200"
         >
           <option value="">{language === "ta" ? "அனைத்து திட்டங்களும்" : "All Schemes"}</option>
           {schemes.map((s) => (
@@ -124,10 +126,10 @@ export default function InstallmentsPage() {
       </div>
 
       {/* Installments Table */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+      <div className="maroon-card rounded-3xl overflow-hidden shadow-xl border border-amber-500/25">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 font-semibold uppercase border-b border-slate-200">
+          <table className="w-full text-left text-xs bg-[#240005]">
+            <thead className="bg-[#380109] text-amber-300 font-serif border-b border-amber-500/30">
               <tr>
                 <th className="py-3 px-4">Passbook #</th>
                 <th className="py-3 px-4">Customer Name</th>
@@ -139,41 +141,41 @@ export default function InstallmentsPage() {
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-amber-500/10">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-amber-300/60 font-serif">
                     Loading installments...
                   </td>
                 </tr>
               ) : installments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-amber-300/60 font-serif">
                     No installments found for selected filter.
                   </td>
                 </tr>
               ) : (
                 installments.map((inst) => (
-                  <tr key={inst.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-amber-700">
+                  <tr key={inst.id} className="hover:bg-amber-500/5 transition-colors text-amber-100">
+                    <td className="py-3 px-4 font-mono font-bold text-amber-400">
                       {inst.passbook_number}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-slate-800">{inst.customer_name}</div>
-                      <div className="text-[10px] text-slate-400">{inst.customer_mobile}</div>
+                      <div className="font-bold text-amber-100">{inst.customer_name}</div>
+                      <div className="text-[10px] text-amber-400/60 font-mono">{inst.customer_mobile}</div>
                     </td>
-                    <td className="py-3 px-4 text-slate-700 font-medium">
+                    <td className="py-3 px-4 text-amber-200/80 font-medium">
                       {inst.scheme_name}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className="font-mono font-bold bg-slate-100 px-2 py-0.5 rounded text-slate-800">
+                      <span className="font-mono font-bold bg-[#1e0004] border border-amber-500/30 px-2 py-0.5 rounded text-amber-300">
                         #{inst.installment_number}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-600">
+                    <td className="py-3 px-4 font-mono text-amber-300/80">
                       {formatDate(inst.due_date)}
                     </td>
-                    <td className="py-3 px-4 text-right font-extrabold text-slate-900">
+                    <td className="py-3 px-4 text-right font-black text-amber-300 text-sm">
                       {formatINR(inst.amount)}
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -199,18 +201,12 @@ export default function InstallmentsPage() {
                             )}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
-                            title="Send WhatsApp Reminder"
+                            title="Send WhatsApp Payment Reminder"
+                            className="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-500/20"
                           >
                             <Share2 className="h-4 w-4" />
                           </a>
                         )}
-                        <button
-                          onClick={() => setQuickPayOpen(true)}
-                          className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] shadow-sm"
-                        >
-                          Collect
-                        </button>
                       </div>
                     </td>
                   </tr>
