@@ -13,7 +13,6 @@ import {
   AlertCircle,
   Receipt,
   User,
-  CreditCard,
 } from "lucide-react";
 
 interface QuickPaymentModalProps {
@@ -66,7 +65,6 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // When customer is selected, fetch their enrolled schemes
   const handleSelectCustomer = async (cust: any) => {
     setSelectedCustomer(cust);
     setSelectedMember(null);
@@ -97,7 +95,6 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
         setSelectedInstallment(pending[0]);
       }
     } else {
-      // Fetch installments
       fetch(`/api/installments?memberId=${schemeMember.id}&status=pending`)
         .then((res) => res.json())
         .then((data) => {
@@ -159,26 +156,26 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-amber-200 overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-[#320008] rounded-3xl shadow-2xl border border-amber-500/40 overflow-hidden my-8 text-amber-100">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-brand-blue via-blue-900 to-indigo-950 text-white">
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#4d020e] to-[#250005] border-b border-amber-500/30 text-white">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 font-black shadow-md">
               <Receipt className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold tracking-tight">
+              <h3 className="text-base font-black text-amber-300 font-serif tracking-tight">
                 {language === "ta" ? "விரைவு தவணை வசூல்" : "Quick Installment Collection"}
               </h3>
-              <p className="text-xs text-amber-300">
+              <p className="text-xs text-amber-200/70">
                 {language === "ta" ? "ரசீது & உடனடி வாட்ஸ்அப் பகிர்வு" : "Instant Receipt & WhatsApp Sharing"}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-1.5 text-white/80 hover:bg-white/10 transition-colors"
+            className="rounded-full p-1.5 text-amber-200/80 hover:bg-amber-500/10 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -189,45 +186,45 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
           {completedReceipt ? (
             /* Success & Receipt View */
             <div className="space-y-6">
-              <div className="text-center py-4 bg-emerald-50 rounded-2xl border border-emerald-200">
-                <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto mb-2" />
-                <h4 className="text-lg font-bold text-emerald-900">
+              <div className="text-center py-4 bg-[#200004] rounded-2xl border border-amber-500/40">
+                <CheckCircle2 className="h-12 w-12 text-amber-400 mx-auto mb-2" />
+                <h4 className="text-lg font-black text-amber-300 font-serif">
                   {language === "ta" ? "தவணை வெற்றிகரமாக பெறப்பட்டது!" : "Payment Collected Successfully!"}
                 </h4>
-                <p className="text-xs text-emerald-700 font-mono mt-1">
+                <p className="text-xs text-amber-400 font-mono mt-1">
                   Receipt No: {completedReceipt.receipt_number}
                 </p>
               </div>
 
               {/* Receipt Summary Card */}
-              <div className="border border-dashed border-slate-300 rounded-2xl p-5 bg-amber-50/30 text-xs space-y-3 font-sans">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                  <span className="font-bold text-slate-800 text-sm">
+              <div className="border border-dashed border-amber-500/40 rounded-2xl p-5 bg-[#250005] text-xs space-y-3 font-sans">
+                <div className="flex justify-between items-center pb-2 border-b border-amber-500/20">
+                  <span className="font-bold text-amber-200 text-sm">
                     {completedReceipt.customer_name} ({completedReceipt.customer_code})
                   </span>
-                  <span className="font-mono text-slate-600">{completedReceipt.customer_mobile}</span>
+                  <span className="font-mono text-amber-400">{completedReceipt.customer_mobile}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-slate-600">
+                <div className="grid grid-cols-2 gap-2 text-amber-100/80">
                   <div>
-                    <span className="font-semibold text-slate-800">Scheme: </span>
+                    <span className="font-semibold text-amber-300">Scheme: </span>
                     {completedReceipt.scheme_name}
                   </div>
                   <div>
-                    <span className="font-semibold text-slate-800">Passbook: </span>
+                    <span className="font-semibold text-amber-300">Passbook: </span>
                     {completedReceipt.passbook_number}
                   </div>
                   <div>
-                    <span className="font-semibold text-slate-800">Installment #: </span>
-                    {completedReceipt.installment_number}
+                    <span className="font-semibold text-amber-300">Installment #: </span>
+                    #{completedReceipt.installment_number}
                   </div>
                   <div>
-                    <span className="font-semibold text-slate-800">Mode: </span>
-                    <span className="uppercase font-bold text-slate-800">{completedReceipt.payment_mode}</span>
+                    <span className="font-semibold text-amber-300">Mode: </span>
+                    <span className="uppercase font-bold text-amber-400">{completedReceipt.payment_mode}</span>
                   </div>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-sm font-bold text-brand-blue">
-                  <span>Total Amount Paid:</span>
-                  <span className="text-base text-emerald-700 font-extrabold">
+                <div className="flex justify-between items-center pt-2 border-t border-amber-500/20 text-sm font-bold">
+                  <span className="text-amber-200">Total Amount Paid:</span>
+                  <span className="text-lg text-amber-400 font-black font-mono">
                     {formatINR(completedReceipt.total_amount)}
                   </span>
                 </div>
@@ -237,9 +234,9 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
               <div className="flex flex-wrap gap-3 justify-center pt-2">
                 <button
                   onClick={() => window.print()}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs shadow-sm"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-amber-500/40 bg-[#250005] hover:bg-[#350109] text-amber-200 font-semibold text-xs shadow-sm"
                 >
-                  <Printer className="h-4 w-4 text-slate-600" />
+                  <Printer className="h-4 w-4 text-amber-400" />
                   {t.printReceipt}
                 </button>
 
@@ -271,7 +268,7 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                     setCompletedReceipt(null);
                     onSuccess?.();
                   }}
-                  className="px-5 py-2.5 rounded-xl bg-brand-blue hover:bg-blue-800 text-white font-semibold text-xs shadow-md shadow-blue-900/20"
+                  className="px-5 py-2.5 rounded-xl gold-gradient-btn text-slate-950 font-black text-xs"
                 >
                   {language === "ta" ? "முடிந்தது" : "Done"}
                 </button>
@@ -279,9 +276,9 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
             </div>
           ) : (
             /* Collection Form */
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               {error && (
-                <div className="flex items-center gap-2 p-3 text-xs bg-rose-50 text-rose-700 rounded-xl border border-rose-200">
+                <div className="flex items-center gap-2 p-3 text-xs bg-rose-950/80 text-rose-300 rounded-xl border border-rose-500/40">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -289,34 +286,34 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
 
               {/* Customer Search Section */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-amber-200 mb-1.5">
                   {language === "ta" ? "சந்தாதாரர் தேடுக (பெயர் / எண் / குறியீடு)" : "Search Customer (Name, Mobile, ID)"}
                 </label>
                 <div className="relative">
-                  <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+                  <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-amber-400/60" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={language === "ta" ? "வாடிக்கையாளர் பெயர் அல்லது மொபைல் எண்..." : "Type customer name or mobile..."}
-                    className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 text-xs bg-[#220005] border border-amber-500/30 rounded-xl text-amber-100 placeholder-amber-200/30 focus:outline-none focus:ring-2 focus:ring-amber-400 font-medium"
                   />
                 </div>
 
                 {/* Search Results Dropdown */}
                 {customers.length > 0 && !selectedCustomer && (
-                  <div className="mt-1 border border-slate-200 rounded-xl max-h-44 overflow-y-auto bg-white shadow-lg divide-y divide-slate-100">
+                  <div className="mt-1 border border-amber-500/30 rounded-xl max-h-44 overflow-y-auto bg-[#250005] shadow-2xl divide-y divide-amber-500/10">
                     {customers.map((c) => (
                       <div
                         key={c.id}
                         onClick={() => handleSelectCustomer(c)}
-                        className="p-2.5 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-xs"
+                        className="p-2.5 hover:bg-amber-500/10 cursor-pointer flex justify-between items-center text-xs"
                       >
                         <div>
-                          <p className="font-bold text-slate-800">{c.full_name}</p>
-                          <p className="text-slate-500 text-[11px]">{c.mobile} • {c.city}</p>
+                          <p className="font-bold text-amber-200">{c.full_name}</p>
+                          <p className="text-amber-300/60 text-[11px] font-mono">{c.mobile} • {c.city}</p>
                         </div>
-                        <span className="font-mono text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
+                        <span className="font-mono text-xs bg-amber-500/10 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">
                           {c.customer_code}
                         </span>
                       </div>
@@ -327,14 +324,14 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
 
               {/* Selected Customer Card */}
               {selectedCustomer && (
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-center justify-between">
+                <div className="p-3 bg-[#240005] border border-amber-500/30 rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-blue text-white font-bold text-xs">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-black text-xs">
                       <User className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-xs text-slate-800">{selectedCustomer.full_name}</p>
-                      <p className="text-[11px] text-slate-500">{selectedCustomer.mobile} • {selectedCustomer.city}</p>
+                      <p className="font-bold text-xs text-amber-200">{selectedCustomer.full_name}</p>
+                      <p className="text-[11px] text-amber-300/60 font-mono">{selectedCustomer.mobile} • {selectedCustomer.city}</p>
                     </div>
                   </div>
                   <button
@@ -344,7 +341,7 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                       setSelectedMember(null);
                       setCustomerSchemes([]);
                     }}
-                    className="text-xs text-amber-700 hover:underline font-semibold"
+                    className="text-xs text-amber-400 hover:underline font-bold"
                   >
                     Change
                   </button>
@@ -354,7 +351,7 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
               {/* Enrolled Schemes Selector */}
               {customerSchemes.length > 0 && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  <label className="block text-xs font-bold text-amber-200 mb-1.5">
                     {language === "ta" ? "திட்டம் & பாஸ்புக் தேர்வு" : "Select Chit Scheme & Passbook"}
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -364,19 +361,19 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                         onClick={() => handleSelectScheme(s)}
                         className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                           selectedMember?.id === s.id
-                            ? "border-amber-500 bg-amber-50/90 shadow-sm"
-                            : "border-slate-200 bg-white hover:bg-slate-50"
+                            ? "border-amber-400 bg-amber-500/20 shadow-sm"
+                            : "border-amber-500/20 bg-[#250005] hover:bg-amber-500/10"
                         }`}
                       >
                         <div className="flex justify-between items-center mb-1">
-                          <span className="font-bold text-slate-800">{s.scheme_name}</span>
-                          <span className="font-mono text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">
+                          <span className="font-bold text-amber-200">{s.scheme_name}</span>
+                          <span className="font-mono text-[11px] bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-bold">
                             {s.passbook_number}
                           </span>
                         </div>
-                        <div className="flex justify-between text-[11px] text-slate-500">
+                        <div className="flex justify-between text-[11px] text-amber-300/70">
                           <span>Monthly: {formatINR(s.monthly_amount)}</span>
-                          <span className="font-semibold text-emerald-700">
+                          <span className="font-bold text-emerald-400 font-mono">
                             Paid: {s.completed_installments}/12
                           </span>
                         </div>
@@ -388,10 +385,10 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
 
               {/* Installment selection & Amount fields */}
               {selectedMember && (
-                <div className="space-y-3 pt-2 border-t border-slate-100">
+                <div className="space-y-3 pt-2 border-t border-amber-500/20">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-xs font-bold text-amber-200 mb-1">
                         {language === "ta" ? "தவணை எண்" : "Installment #"}
                       </label>
                       <select
@@ -400,7 +397,7 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                           const inst = pendingInstallments.find((i) => i.id === Number(e.target.value));
                           setSelectedInstallment(inst);
                         }}
-                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                        className="w-full px-3 py-2 text-xs bg-[#220005] border border-amber-500/30 rounded-xl font-semibold text-amber-100"
                       >
                         {pendingInstallments.map((inst) => (
                           <option key={inst.id} value={inst.id}>
@@ -411,14 +408,14 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-xs font-bold text-amber-200 mb-1">
                         {language === "ta" ? "தவணைத் தொகை (₹)" : "Installment Amount (₹)"}
                       </label>
                       <input
                         type="number"
                         value={amount}
                         onChange={(e) => setAmount(Number(e.target.value))}
-                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-bold text-brand-blue"
+                        className="w-full px-3 py-2 text-xs bg-[#220005] border border-amber-500/30 rounded-xl font-black text-amber-300 font-mono"
                         required
                       />
                     </div>
@@ -427,13 +424,13 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                   {/* Payment Mode & Ref */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-xs font-bold text-amber-200 mb-1">
                         {language === "ta" ? "செலுத்தும் முறை" : "Payment Mode"}
                       </label>
                       <select
                         value={paymentMode}
                         onChange={(e) => setPaymentMode(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                        className="w-full px-3 py-2 text-xs bg-[#220005] border border-amber-500/30 rounded-xl font-semibold text-amber-100"
                       >
                         <option value="cash">Cash (ரொக்கம்)</option>
                         <option value="upi">UPI / GPay / PhonePe</option>
@@ -443,7 +440,7 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                      <label className="block text-xs font-bold text-amber-200 mb-1">
                         {language === "ta" ? "பரிவர்த்தனை குறிப்பு (Ref No)" : "Transaction Ref (Optional)"}
                       </label>
                       <input
@@ -451,7 +448,7 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                         value={transactionRef}
                         onChange={(e) => setTransactionRef(e.target.value)}
                         placeholder="e.g. UPI Ref, Cheque No"
-                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
+                        className="w-full px-3 py-2 text-xs bg-[#220005] border border-amber-500/30 rounded-xl text-amber-100"
                       />
                     </div>
                   </div>
@@ -461,7 +458,7 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-amber-500/25 transition-all"
+                      className="w-full py-3.5 gold-gradient-btn rounded-xl font-black text-xs tracking-wider uppercase"
                     >
                       {submitting
                         ? (language === "ta" ? "வசூல் செய்யப்படுகிறது..." : "Collecting Payment...")

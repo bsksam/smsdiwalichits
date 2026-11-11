@@ -2,29 +2,28 @@
 
 import React from "react";
 import { useLanguage } from "./LanguageContext";
-import { Languages } from "lucide-react";
 
 export function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
 
   return (
-    <div className="flex items-center bg-brand-cream/80 border border-amber-200/80 rounded-full p-0.5 shadow-sm">
+    <div className="flex items-center bg-[#240005] border border-amber-500/30 rounded-full p-0.5 shadow-inner">
       <button
         onClick={() => setLanguage("ta")}
-        className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full transition-all duration-200 ${
+        className={`flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full transition-all duration-200 ${
           language === "ta"
-            ? "bg-brand-blue text-white shadow-sm font-bold"
-            : "text-slate-700 hover:text-brand-blue"
+            ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-sm"
+            : "text-amber-200/70 hover:text-amber-300"
         }`}
       >
         <span>தமிழ்</span>
       </button>
       <button
         onClick={() => setLanguage("en")}
-        className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full transition-all duration-200 ${
+        className={`flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full transition-all duration-200 ${
           language === "en"
-            ? "bg-brand-blue text-white shadow-sm font-bold"
-            : "text-slate-700 hover:text-brand-blue"
+            ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-sm"
+            : "text-amber-200/70 hover:text-amber-300"
         }`}
       >
         <span>English</span>

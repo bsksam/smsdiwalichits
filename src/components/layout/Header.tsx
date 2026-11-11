@@ -8,9 +8,8 @@ import {
   Menu,
   Receipt,
   LogOut,
-  User,
-  ShieldCheck,
   Calendar,
+  ShieldCheck,
 } from "lucide-react";
 import { QuickPaymentModal } from "@/components/ui/QuickPaymentModal";
 
@@ -48,29 +47,29 @@ export function Header({ onToggleSidebar, user }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 lg:px-8 backdrop-blur shadow-sm">
-        {/* Left Side: Mobile Menu Button & Title */}
+      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-amber-500/25 bg-[#2d0107]/90 px-4 lg:px-8 backdrop-blur shadow-xl">
+        {/* Left Side: Mobile Menu Button & Date */}
         <div className="flex items-center gap-3">
           <button
             onClick={onToggleSidebar}
-            className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 lg:hidden"
+            className="rounded-xl border border-amber-500/30 p-2 text-amber-300 hover:bg-amber-500/10 lg:hidden"
             aria-label="Toggle menu"
           >
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200/60">
-            <Calendar className="h-3.5 w-3.5 text-amber-600" />
-            <span>{todayStr}</span>
+          <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-amber-200/90 bg-[#3b020c] px-3.5 py-1.5 rounded-full border border-amber-500/30 shadow-inner">
+            <Calendar className="h-3.5 w-3.5 text-amber-400" />
+            <span className="font-mono">{todayStr}</span>
           </div>
         </div>
 
         {/* Right Side: Quick Collect, Language Switcher, User Profile, Logout */}
         <div className="flex items-center gap-3">
-          {/* Quick Payment Button */}
+          {/* Quick Payment Button - Photo 2 Gold Gradient Pill */}
           <button
             onClick={() => setIsQuickPayOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-amber-500/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+            className="gold-gradient-btn flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all"
           >
             <Receipt className="h-4 w-4" />
             <span className="hidden sm:inline">{t.quickPayment}</span>
@@ -81,16 +80,16 @@ export function Header({ onToggleSidebar, user }: HeaderProps) {
           <LanguageSwitcher />
 
           {/* User Profile */}
-          <div className="hidden md:flex items-center gap-2.5 pl-2 border-l border-slate-200">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-brand-blue to-blue-500 text-white font-bold text-xs shadow-sm">
+          <div className="hidden md:flex items-center gap-2.5 pl-3 border-l border-amber-500/25">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-600 to-yellow-400 text-slate-950 font-black text-xs shadow-md">
               {user?.fullName ? user.fullName[0].toUpperCase() : "A"}
             </div>
             <div className="flex flex-col text-left">
-              <span className="text-xs font-bold text-slate-800 leading-tight">
+              <span className="text-xs font-bold text-amber-200 leading-tight">
                 {user?.fullName || "Administrator"}
               </span>
-              <span className="text-[10px] font-semibold text-amber-700 uppercase flex items-center gap-1">
-                <ShieldCheck className="h-3 w-3 inline text-amber-600" />
+              <span className="text-[10px] font-black text-amber-400 uppercase flex items-center gap-1 font-mono">
+                <ShieldCheck className="h-3 w-3 inline text-amber-400" />
                 {user?.role ? user.role.replace("_", " ") : "SUPER ADMIN"}
               </span>
             </div>
@@ -101,7 +100,7 @@ export function Header({ onToggleSidebar, user }: HeaderProps) {
             onClick={handleLogout}
             disabled={isLoggingOut}
             title={t.logout}
-            className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors"
+            className="rounded-xl border border-amber-500/30 p-2 text-amber-300/80 hover:bg-rose-950/60 hover:text-rose-400 hover:border-rose-500/50 transition-colors"
           >
             <LogOut className="h-4 w-4" />
           </button>

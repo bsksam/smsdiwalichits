@@ -45,7 +45,7 @@ export default function DashboardLayout({
 
   return (
     <LanguageProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-800 flex">
+      <div className="min-h-screen bg-[#250005] text-[#fef9c3] flex">
         {/* Sidebar */}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

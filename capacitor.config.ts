@@ -5,13 +5,14 @@ const config: CapacitorConfig = {
   appName: "DIWALI CHIT",
   webDir: "public",
   server: {
-    androidScheme: "https",
+    url: "https://smsdiwalichits.vercel.app",
     cleartext: true,
+    androidScheme: "https",
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
-      backgroundColor: "#1e3a8a",
+      launchShowDuration: 2500,
+      backgroundColor: "#2b0007",
       showSpinner: true,
       androidSpinnerStyle: "large",
       spinnerColor: "#f59e0b",

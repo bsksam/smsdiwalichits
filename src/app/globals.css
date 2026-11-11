@@ -4,21 +4,56 @@
 
 @layer base {
   :root {
-    --background: 248 250 252;
-    --foreground: 15 23 42;
+    --background: 43 0 7;
+    --foreground: 254 240 138;
   }
 
   body {
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #2b0007;
+    background-image: radial-gradient(circle at 50% 20%, #580517 0%, #38000a 45%, #200004 100%);
+    background-attachment: fixed;
+    color: #fef9c3;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    min-height: 100vh;
   }
+}
+
+/* Luxury Gold & Maroon Styling Utilities */
+.gold-gradient-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #facc15 50%, #d97706 100%);
+  color: #1a0004;
+  font-weight: 800;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
+  transition: all 0.2s ease-in-out;
+}
+
+.gold-gradient-btn:hover {
+  background: linear-gradient(135deg, #facc15 0%, #fde047 50%, #f59e0b 100%);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+
+.maroon-card {
+  background: rgba(56, 1, 10, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  box-shadow: 0 8px 30px rgba(15, 0, 3, 0.5);
+}
+
+.maroon-card:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.gold-text-glow {
+  color: #fde047;
+  text-shadow: 0 0 12px rgba(253, 224, 71, 0.35);
 }
 
 /* Custom Print Styles for Passbooks, Receipts & Posters */
 @media print {
   body {
     background: transparent !important;
+    color: #000000 !important;
   }
   header, aside, .no-print {
     display: none !important;
@@ -32,18 +67,19 @@
   }
 }
 
-/* Scrollbar refinement */
+/* Scrollbar refinement with maroon track and gold thumb */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #200004;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #947119;
   border-radius: 9999px;
+  border: 1px solid #38000a;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #d4af37;
 }
