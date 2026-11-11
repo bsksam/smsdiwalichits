@@ -41,6 +41,14 @@ export default function SchemesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Enroll Member into Scheme Modal
+  const [enrollModalOpen, setEnrollModalOpen] = useState(false);
+  const [selectedSchemeForEnroll, setSelectedSchemeForEnroll] = useState<any>(null);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollError, setEnrollError] = useState<string | null>(null);
+
   const fetchSchemes = async () => {
     try {
       const res = await fetch("/api/schemes");
@@ -80,6 +88,52 @@ export default function SchemesPage() {
       setError(err.message || "Failed to create scheme");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleOpenEnrollScheme = async (scheme: any) => {
+    setSelectedSchemeForEnroll(scheme);
+    setEnrollError(null);
+    try {
+      const res = await fetch("/api/customers");
+      const data = await res.json();
+      setCustomers(data.customers || []);
+      if (data.customers && data.customers.length > 0) {
+        setSelectedCustomerId(String(data.customers[0].id));
+      }
+      setEnrollModalOpen(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEnrollSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSchemeForEnroll || !selectedCustomerId) return;
+    setEnrolling(true);
+    setEnrollError(null);
+
+    try {
+      const res = await fetch(`/api/schemes/${selectedSchemeForEnroll.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: Number(selectedCustomerId),
+          joiningAmount: 0,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to enroll member in scheme");
+      }
+
+      setEnrollModalOpen(false);
+      fetchSchemes();
+    } catch (err: any) {
+      setEnrollError(err.message);
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -194,18 +248,101 @@ export default function SchemesPage() {
                   <span>members</span>
                 </div>
 
-                <Link
-                  href="/packages"
-                  className="flex items-center gap-1.5 text-amber-300 hover:text-amber-100 font-bold bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-xl transition-all"
-                >
-                  <Gift className="h-3.5 w-3.5" />
-                  <span>{language === "ta" ? "மளிகை தொகுப்பு" : "Package"}</span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleOpenEnrollScheme(s)}
+                    className="flex items-center gap-1 text-xs font-bold gold-gradient-btn px-3 py-1.5 rounded-xl text-[#1a0004] shadow-sm transition-all"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>{language === "ta" ? "உறுப்பினர் சேர்" : "+ Enroll"}</span>
+                  </button>
+
+                  <Link
+                    href="/packages"
+                    className="flex items-center gap-1.5 text-amber-300 hover:text-amber-100 font-bold bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-xl transition-all"
+                  >
+                    <Gift className="h-3.5 w-3.5" />
+                    <span>{language === "ta" ? "மளிகை" : "Package"}</span>
+                  </Link>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Enroll Customer into This Scheme Modal */}
+      {enrollModalOpen && selectedSchemeForEnroll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md erp-modal-box overflow-hidden shadow-2xl border border-amber-500/40">
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#3e010b] via-[#4d0210] to-[#2b0006] text-amber-200 border-b border-amber-500/30">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <h3 className="text-sm font-bold font-serif tracking-wide">
+                  {language === "ta" ? "திட்டத்தில் சந்தாதாரரை சேர்க்கவும்" : "Enroll Customer in Scheme"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEnrollModalOpen(false)}
+                className="text-amber-400/80 hover:text-amber-300 p-1 rounded-lg hover:bg-amber-500/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={handleEnrollSubmit} className="p-6 space-y-4 text-xs bg-[#240005]">
+              {enrollError && (
+                <div className="p-3 bg-rose-950/80 text-rose-300 rounded-xl border border-rose-500/40">
+                  {enrollError}
+                </div>
+              )}
+
+              <div className="p-3.5 bg-[#1e0004] rounded-2xl border border-amber-500/30 space-y-1">
+                <span className="text-[10px] text-amber-400/70 font-serif uppercase tracking-wider block">Scheme Selected:</span>
+                <p className="font-bold text-amber-100 text-sm">{selectedSchemeForEnroll.name} ({selectedSchemeForEnroll.tamil_name})</p>
+                <p className="text-[11px] font-mono text-amber-300">
+                  {formatINR(selectedSchemeForEnroll.monthly_amount)}/mo • {selectedSchemeForEnroll.total_months} Months • Hamper: {formatINR(selectedSchemeForEnroll.grocery_package_value)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-amber-300 mb-2 font-serif text-xs">
+                  {language === "ta" ? "வாடிக்கையாளரை தேர்ந்தெடுக்கவும் *" : "Select Registered Customer *"}
+                </label>
+                <select
+                  value={selectedCustomerId}
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200 text-xs focus:ring-2 focus:ring-amber-400"
+                >
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-[#240005] text-amber-200 py-1.5">
+                      {c.full_name} ({c.customer_code}) - {c.mobile} - {c.city}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-[11px] text-amber-200/70 bg-[#1a0003] p-3 rounded-xl border border-amber-500/20">
+                Enrolling will automatically generate the 12-month installment schedule and assign a unique passbook number.
+              </p>
+              <div className="flex justify-end gap-2 pt-2 border-t border-amber-500/20">
+                <button
+                  type="button"
+                  onClick={() => setEnrollModalOpen(false)}
+                  className="px-4 py-2 text-amber-300/80 hover:bg-amber-500/10 rounded-xl font-semibold border border-amber-500/20 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={enrolling}
+                  className="gold-gradient-btn px-5 py-2 rounded-xl font-black text-[#1a0004] shadow-md transition-all"
+                >
+                  {enrolling ? "Enrolling..." : "Confirm Enrollment"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Create Scheme Modal */}
       {isModalOpen && (

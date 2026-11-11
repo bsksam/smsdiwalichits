@@ -49,6 +49,14 @@ export default function CustomersPage() {
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
+  // Quick Enroll Scheme Modal State
+  const [enrollModalOpen, setEnrollModalOpen] = useState(false);
+  const [enrollCustomer, setEnrollCustomer] = useState<any>(null);
+  const [availableSchemes, setAvailableSchemes] = useState<any[]>([]);
+  const [selectedSchemeId, setSelectedSchemeId] = useState<string>("");
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollError, setEnrollError] = useState<string | null>(null);
+
   const fetchCustomers = async () => {
     try {
       let url = `/api/customers?search=${encodeURIComponent(searchTerm)}`;
@@ -135,6 +143,52 @@ export default function CustomersPage() {
       setModalError(err.message);
     } finally {
       setModalSubmitting(false);
+    }
+  };
+
+  const handleOpenEnroll = async (cust: any) => {
+    setEnrollCustomer(cust);
+    setEnrollError(null);
+    try {
+      const res = await fetch("/api/schemes");
+      const data = await res.json();
+      setAvailableSchemes(data.schemes || []);
+      if (data.schemes && data.schemes.length > 0) {
+        setSelectedSchemeId(String(data.schemes[0].id));
+      }
+      setEnrollModalOpen(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEnrollSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enrollCustomer || !selectedSchemeId) return;
+    setEnrolling(true);
+    setEnrollError(null);
+
+    try {
+      const res = await fetch(`/api/schemes/${selectedSchemeId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: enrollCustomer.id,
+          joiningAmount: 0,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to enroll customer in scheme");
+      }
+
+      setEnrollModalOpen(false);
+      fetchCustomers();
+    } catch (err: any) {
+      setEnrollError(err.message);
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -266,10 +320,14 @@ export default function CustomersPage() {
                 customers.map((c) => (
                   <tr key={c.id} className="hover:bg-amber-500/5 transition-colors text-amber-100">
                     <td className="py-3 px-4 font-mono font-bold text-amber-400">
-                      {c.customer_code}
+                      <Link href={`/customers/${c.id}`} className="hover:underline">
+                        {c.customer_code}
+                      </Link>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-amber-100">{c.full_name}</div>
+                      <Link href={`/customers/${c.id}`} className="font-bold text-amber-100 hover:text-amber-300 transition-colors">
+                        {c.full_name}
+                      </Link>
                       {c.father_husband_name && (
                         <div className="text-[11px] text-amber-300/70">
                           c/o {c.father_husband_name}
@@ -301,6 +359,16 @@ export default function CustomersPage() {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
+                        {/* Quick Enroll Scheme Button */}
+                        <button
+                          onClick={() => handleOpenEnroll(c)}
+                          title={language === "ta" ? "திட்டத்தில் சேர்க்க" : "Enroll in Scheme"}
+                          className="px-2.5 py-1 rounded-lg text-amber-200 hover:text-[#1a0004] hover:bg-amber-400 bg-amber-500/20 border border-amber-500/40 text-[10px] font-extrabold flex items-center gap-1 transition-all"
+                        >
+                          <Plus className="h-3 w-3 text-amber-400" />
+                          <span>{language === "ta" ? "திட்டம்" : "+ Scheme"}</span>
+                        </button>
+
                         <Link
                           href={`/customers/${c.id}`}
                           title="View Ledger & Passbook"
@@ -338,6 +406,77 @@ export default function CustomersPage() {
           </table>
         </div>
       </div>
+
+      {/* Quick Enroll Scheme Modal */}
+      {enrollModalOpen && enrollCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md erp-modal-box overflow-hidden shadow-2xl border border-amber-500/40">
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#3e010b] via-[#4d0210] to-[#2b0006] text-amber-200 border-b border-amber-500/30">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <h3 className="text-sm font-bold font-serif tracking-wide">
+                  {language === "ta" ? "சந்தாதாரரை திட்டத்தில் சேர்க்கவும்" : "Enroll Customer in Chit Scheme"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEnrollModalOpen(false)}
+                className="text-amber-400/80 hover:text-amber-300 p-1 rounded-lg hover:bg-amber-500/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={handleEnrollSubmit} className="p-6 space-y-4 text-xs bg-[#240005]">
+              {enrollError && (
+                <div className="p-3 bg-rose-950/80 text-rose-300 rounded-xl border border-rose-500/40">
+                  {enrollError}
+                </div>
+              )}
+
+              <div className="p-3 bg-[#180003] rounded-xl border border-amber-500/30 space-y-1">
+                <span className="text-[10px] text-amber-400/70 font-serif uppercase tracking-wider block">Customer Selected:</span>
+                <p className="font-bold text-amber-100 text-sm">{enrollCustomer.full_name}</p>
+                <p className="text-[11px] font-mono text-amber-300">{enrollCustomer.customer_code} • {enrollCustomer.mobile}</p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-amber-300 mb-2 font-serif text-xs">
+                  {language === "ta" ? "சீட்டு திட்டத்தை தேர்ந்தெடுக்கவும் *" : "Select Chit Scheme *"}
+                </label>
+                <select
+                  value={selectedSchemeId}
+                  onChange={(e) => setSelectedSchemeId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200 text-xs focus:ring-2 focus:ring-amber-400"
+                >
+                  {availableSchemes.map((sc) => (
+                    <option key={sc.id} value={sc.id} className="bg-[#240005] text-amber-200 py-1.5">
+                      {sc.name} ({sc.tamil_name}) - {formatINR(sc.monthly_amount)}/mo (Pkg: {formatINR(sc.grocery_package_value)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-[11px] text-amber-200/70 bg-[#1a0003] p-3 rounded-xl border border-amber-500/20">
+                Enrolling will automatically generate the 12-month installment schedule and assign a unique passbook number.
+              </p>
+              <div className="flex justify-end gap-2 pt-2 border-t border-amber-500/20">
+                <button
+                  type="button"
+                  onClick={() => setEnrollModalOpen(false)}
+                  className="px-4 py-2 text-amber-300/80 hover:bg-amber-500/10 rounded-xl font-semibold border border-amber-500/20 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={enrolling}
+                  className="gold-gradient-btn px-5 py-2 rounded-xl font-black text-[#1a0004] shadow-md transition-all"
+                >
+                  {enrolling ? "Enrolling..." : "Confirm Enrollment"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Customer Modal */}
       {isModalOpen && (
