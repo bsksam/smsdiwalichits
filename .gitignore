@@ -44,3 +44,5 @@ android/.gradle/
 android/build/
 android/captures/
 .gradle/
+
+.vercel
