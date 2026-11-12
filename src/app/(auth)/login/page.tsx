@@ -164,6 +164,15 @@ export default function LoginPage() {
           SMSTREAT SUPERMARKET SAVINGS
         </p>
 
+        {/* Live Version Tag Badge */}
+        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/15 via-amber-400/25 to-amber-500/15 border border-amber-400/50 shadow-md">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse ring-2 ring-emerald-500/30" />
+          <span className="text-[11px] font-mono font-black text-amber-300 tracking-wider">
+            VERSION v1.3.0
+          </span>
+          <span className="text-[10px] text-amber-400/60 font-medium">• RELEASE</span>
+        </div>
+
         {/* Main Portal Switcher Tabs (Staff vs Customer) */}
         <div className="flex w-full bg-[#200004]/80 p-1 rounded-2xl border border-amber-500/30 my-4 shadow-inner">
           <button
@@ -480,16 +489,18 @@ export default function LoginPage() {
         {/* APK Download Button for Android Users */}
         <div className="mt-5 pt-4 border-t border-amber-500/20 text-center w-full">
           <a
-            href="/DIWALI_CHIT_v1.2.0.apk"
-            download="DIWALI_CHIT_v1.2.0.apk"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all shadow-lg hover:shadow-amber-500/20 group"
+            href="/DIWALI_CHIT_v1.3.0.apk"
+            download="DIWALI_CHIT_v1.3.0.apk"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/50 text-amber-300 text-xs font-bold transition-all shadow-lg hover:shadow-amber-500/20 group"
           >
             <Smartphone className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
-            <span>Android App பதிவிறக்கம் (Download v1.2.0 APK)</span>
+            <span>Android App பதிவிறக்கம் (Download v1.3.0 APK)</span>
             <Download className="h-4 w-4 text-amber-400/80" />
           </a>
-          <p className="text-[10px] text-amber-200/50 mt-1 font-mono">
-            Version 1.2.0 • Modern smstreat App Icon • Self-Service Payment
+          <p className="text-[10px] text-amber-200/60 mt-1.5 font-mono flex items-center justify-center gap-2 flex-wrap">
+            <span className="px-2 py-0.5 rounded bg-black/40 border border-amber-500/30 font-bold text-amber-300">v1.3.0</span>
+            <span>•</span>
+            <span>Master Settings • Razorpay Kit • Payment Lock & Interest</span>
           </p>
         </div>
       </div>
