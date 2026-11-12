@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "DIWALI CHIT",
   webDir: "public",
   server: {
-    url: "https://smsdiwalichits.vercel.app",
+    url: "https://smsdiwalichits.vercel.app/login",
     cleartext: true,
     androidScheme: "https",
   },

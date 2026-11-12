@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { LanguageProvider } from "@/components/layout/LanguageContext";
@@ -10,6 +11,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -17,13 +19,7 @@ export default function DashboardLayout({
     fetch("/api/auth/me")
       .then((res) => {
         if (!res.ok) {
-          // If unauthenticated in production, can redirect; in dev, set default admin
-          setCurrentUser({
-            id: 1,
-            username: "admin",
-            fullName: "Super Administrator",
-            role: "super_admin",
-          });
+          router.push("/login");
           return null;
         }
         return res.json();
@@ -31,17 +27,14 @@ export default function DashboardLayout({
       .then((data) => {
         if (data?.user) {
           setCurrentUser(data.user);
+        } else {
+          router.push("/login");
         }
       })
       .catch(() => {
-        setCurrentUser({
-          id: 1,
-          username: "admin",
-          fullName: "Super Administrator",
-          role: "super_admin",
-        });
+        router.push("/login");
       });
-  }, []);
+  }, [router]);
 
   return (
     <LanguageProvider>
