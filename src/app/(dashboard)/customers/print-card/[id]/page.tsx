@@ -100,11 +100,17 @@ export default function CustomerPrintCardPage() {
       <div className="no-print space-y-3 p-4 bg-[#260005] rounded-2xl border border-amber-500/40 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/portal");
+              }
+            }}
             className="flex items-center gap-2 text-xs font-bold text-amber-300 hover:text-amber-100"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to Customer Profile</span>
+            <span>← Back / பின்செல்க</span>
           </button>
 
           <div className="flex flex-wrap items-center gap-2.5">

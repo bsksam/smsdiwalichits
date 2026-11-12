@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { LanguageProvider } from "@/components/layout/LanguageContext";
@@ -12,10 +12,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isPrintCard = pathname?.includes("/print-card");
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
+    // Printable cards (Passbook / Chit Cards) are accessible to both customers & staff without staff auth redirect
+    if (isPrintCard) return;
+
     fetch("/api/auth/me")
       .then((res) => {
         if (!res.ok) {
@@ -34,7 +40,18 @@ export default function DashboardLayout({
       .catch(() => {
         router.push("/login");
       });
-  }, [router]);
+  }, [router, isPrintCard]);
+
+  // If viewing/printing a passbook card, render clean standalone view without sidebar/header
+  if (isPrintCard) {
+    return (
+      <LanguageProvider>
+        <div className="min-h-screen bg-[#200004] text-[#fef9c3] p-3 sm:p-6">
+          {children}
+        </div>
+      </LanguageProvider>
+    );
+  }
 
   return (
     <LanguageProvider>
