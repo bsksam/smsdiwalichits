@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Clock,
   X,
+  Smartphone,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -196,6 +197,15 @@ export default function CustomerPortalPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
+              <a
+                href="/DIWALI_CHIT_v1.1.0.apk"
+                download="DIWALI_CHIT_v1.1.0.apk"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-500/50 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition-all shadow-md group"
+              >
+                <Smartphone className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span>Download App (v1.1.0)</span>
+              </a>
+
               <a
                 href="tel:9876543210"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-500/40 bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 text-xs font-bold transition-all"
