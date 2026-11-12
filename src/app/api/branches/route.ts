@@ -65,7 +65,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const currentUser = await getCurrentUser();
-    if (!currentUser || !["super_admin", "admin"].includes(currentUser.role)) {
+    if (!currentUser || !["super_admin", "admin", "branch_manager", "manager"].includes(currentUser.role)) {
       return NextResponse.json({ error: "Only Admins can edit branches" }, { status: 403 });
     }
 
@@ -113,6 +113,6 @@ export async function PUT(req: Request) {
     return NextResponse.json({ success: true, message: "Branch updated successfully" });
   } catch (error: any) {
     console.error("Branch update error:", error);
-    return NextResponse.json({ error: "Failed to update branch" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to update branch" }, { status: 500 });
   }
 }
