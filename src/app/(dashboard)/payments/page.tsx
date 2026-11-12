@@ -16,9 +16,11 @@ import {
   CreditCard,
   FileSpreadsheet,
   Eye,
+  Download,
 } from "lucide-react";
 import { QuickPaymentModal } from "@/components/ui/QuickPaymentModal";
 import * as XLSX from "xlsx";
+import { generatePaymentReceiptPDF, shareOrDownloadPDF, printPDF } from "@/lib/pdf";
 
 export default function PaymentsPage() {
   const { t, language } = useLanguage();
@@ -30,6 +32,24 @@ export default function PaymentsPage() {
 
   // Selected receipt for detailed viewing/printing
   const [viewingReceipt, setViewingReceipt] = useState<any>(null);
+  const [sharingWa, setSharingWa] = useState(false);
+
+  // App Master Settings
+  const [appSettings, setAppSettings] = useState<any>({
+    shop_name: "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட் (SRI LAKSHMI SUPERMARKET)",
+    shop_address: "2a PP NAGAR MADURAI, MADURAI - 625016, Tamil Nadu",
+    shop_phone: "+91 96009 01937 / +91 91502 80795",
+    shop_gst: "33bsops67891zq",
+  });
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.settings) setAppSettings(data.settings);
+      })
+      .catch(() => {});
+  }, []);
 
   // Reversal Modal
   const [reversalModalOpen, setReversalModalOpen] = useState(false);
@@ -123,11 +143,56 @@ export default function PaymentsPage() {
       paymentMode: p.payment_mode,
       receiptNumber: p.receipt_number,
       paymentDate: formatDate(p.payment_date),
-      shopName: "SRI LAKSHMI SUPERMARKET",
-      shopPhone: "+91 98765 43210",
+      shopName: appSettings.shop_name?.split("(")[0]?.trim() || "SRI LAKSHMI SUPERMARKET",
+      shopPhone: appSettings.shop_phone || "+91 96009 01937",
     });
     const url = getWhatsAppShareUrl(p.customer_mobile, msg);
     window.open(url, "_blank");
+  };
+
+  const handleDownloadReceiptPDF = (p: any) => {
+    if (!p) return;
+    const doc = generatePaymentReceiptPDF(p, appSettings);
+    doc.save(`Receipt_${p.receipt_number || "Payment"}.pdf`);
+  };
+
+  const handleShareReceiptWhatsAppPDF = async (p: any) => {
+    if (!p) return;
+    setSharingWa(true);
+    try {
+      const doc = generatePaymentReceiptPDF(p, appSettings);
+      const text = generatePaymentReceiptWhatsAppMessage({
+        customerName: p.customer_name,
+        schemeName: p.scheme_name,
+        installmentNumber: p.installment_number,
+        amount: p.total_amount,
+        paymentMode: p.payment_mode,
+        receiptNumber: p.receipt_number,
+        paymentDate: formatDate(p.payment_date),
+        shopName: appSettings.shop_name || "SRI LAKSHMI SUPERMARKET",
+        shopPhone: appSettings.shop_phone || "+91 96009 01937",
+      });
+
+      await shareOrDownloadPDF(
+        doc,
+        `Receipt_${p.receipt_number || "Payment"}.pdf`,
+        `Payment Receipt - ${p.customer_name}`,
+        p.customer_mobile,
+        text
+      );
+    } finally {
+      setSharingWa(false);
+    }
+  };
+
+  const handlePrintReceipt = (p: any) => {
+    if (!p) return;
+    try {
+      const doc = generatePaymentReceiptPDF(p, appSettings);
+      printPDF(doc);
+    } catch {
+      window.print();
+    }
   };
 
   return (
@@ -311,9 +376,15 @@ export default function PaymentsPage() {
 
             <div className="p-6 space-y-4 bg-[#240005] text-xs font-mono">
               <div className="text-center border-b border-dashed border-amber-500/30 pb-3">
-                <h4 className="font-black text-sm text-amber-300 font-serif">SRI LAKSHMI SUPERMARKET</h4>
-                <p className="text-[10px] text-amber-200/70">124, Bazaar Main Road, Salem - 636001</p>
-                <p className="text-[10px] text-amber-200/70">Phone: +91 98765 43210</p>
+                <h4 className="font-black text-sm text-amber-300 font-serif">
+                  {appSettings.shop_name?.split("(")[0]?.trim() || "SRI LAKSHMI SUPERMARKET"}
+                </h4>
+                <p className="text-[10px] text-amber-200/80">
+                  {appSettings.shop_address || "2a PP NAGAR MADURAI, MADURAI - 625016, Tamil Nadu"}
+                </p>
+                <p className="text-[10px] text-amber-400 font-bold">
+                  Phone: {appSettings.shop_phone || "+91 96009 01937"} {appSettings.shop_gst ? `| GST: ${appSettings.shop_gst}` : ""}
+                </p>
                 <p className="text-[10px] font-bold text-amber-400 mt-1">DIWALI CHIT FUND RECEIPT</p>
               </div>
 
@@ -354,22 +425,45 @@ export default function PaymentsPage() {
               </div>
 
               <div className="text-center text-[10px] text-amber-300/70 space-y-0.5 pt-2">
-                <p>Thank you for saving with Sri Lakshmi Supermarket!</p>
+                <p>Thank you for saving with {appSettings.shop_name?.split("(")[0]?.trim() || "Sri Lakshmi Supermarket"}!</p>
                 <p>தீபாவளி மளிகை சிட் சேமிப்பில் இணைந்தமைக்கு நன்றி!</p>
                 <p className="font-mono text-[9px] text-amber-400/50">Computer Generated Receipt • Valid without signature</p>
               </div>
             </div>
 
-            <div className="p-4 bg-[#1e0004] border-t border-amber-500/20 flex justify-end gap-2">
+            <div className="p-4 bg-[#1e0004] border-t border-amber-500/20 flex flex-wrap items-center justify-end gap-2">
               <button
                 onClick={() => setViewingReceipt(null)}
-                className="px-4 py-2 text-xs font-semibold text-amber-300/80 hover:bg-amber-500/10 rounded-xl border border-amber-500/20"
+                className="px-3.5 py-2 text-xs font-semibold text-amber-300/80 hover:bg-amber-500/10 rounded-xl border border-amber-500/20"
               >
                 Close
               </button>
+
+              {/* WhatsApp Share PDF Button */}
               <button
-                onClick={() => window.print()}
-                className="gold-gradient-btn px-5 py-2 text-[#1a0004] font-black text-xs rounded-xl shadow-md flex items-center gap-1.5"
+                onClick={() => handleShareReceiptWhatsAppPDF(viewingReceipt)}
+                disabled={sharingWa}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all"
+                title="Share Receipt PDF via WhatsApp"
+              >
+                <Share2 className="h-4 w-4" />
+                <span>{sharingWa ? "Sharing..." : "WhatsApp Share PDF"}</span>
+              </button>
+
+              {/* Download PDF Button */}
+              <button
+                onClick={() => handleDownloadReceiptPDF(viewingReceipt)}
+                className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-300 font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all"
+                title="Download Receipt PDF"
+              >
+                <Download className="h-4 w-4 text-amber-400" />
+                <span>Download PDF</span>
+              </button>
+
+              {/* Print Receipt Button */}
+              <button
+                onClick={() => handlePrintReceipt(viewingReceipt)}
+                className="gold-gradient-btn px-4 py-2 text-[#1a0004] font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 hover:scale-105 transition-all"
               >
                 <Printer className="h-4 w-4" />
                 <span>Print Receipt</span>

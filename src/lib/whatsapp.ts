@@ -60,3 +60,35 @@ export function generateDueReminderWhatsAppMessage(data: {
 தவணைத் தொகையை உடனடியாக செலுத்தி கூடுதல் போனஸ் பரிசுகளை பெறுங்கள்!
 📞 உதவிக்கு: ${data.shopPhone}`;
 }
+
+export function generateRedemptionInvoiceWhatsAppMessage(data: {
+  customerName: string;
+  schemeName: string;
+  passbookNumber: string;
+  invoiceNumber: string;
+  packageName: string;
+  packageValue: number;
+  shopName: string;
+  shopAddress: string;
+  shopPhone: string;
+}): string {
+  return `🪔 *${data.shopName}*
+🏬 ${data.shopAddress}
+📞 தொலைபேசி: ${data.shopPhone}
+------------------------------------
+🎁 *தீபாவளி மளிகைப் பரிசு விநியோக ரசீது*
+*(Diwali Grocery Redemption Invoice)*
+------------------------------------
+வணக்கம் திரு/திருமதி. *${data.customerName}*,
+
+உங்கள் தீபாவளி சிட் சேமிப்பு வெற்றிகரமாக நிறைவடைந்து, மளிகைப் பரிசுத் தொகுப்பு வழங்கப்பட்டது!
+
+📄 *ரசீது எண் (Invoice No):* ${data.invoiceNumber}
+📖 *பாஸ்புக் எண் (Passbook No):* ${data.passbookNumber}
+🏷️ *திட்டம் (Scheme):* ${data.schemeName}
+📦 *வழங்கப்பட்ட மளிகைப் பேக்கேஜ்:* ${data.packageName}
+💰 *மொத்த மளிகைப் மதிப்பு:* ₹${data.packageValue.toLocaleString("en-IN")}
+------------------------------------
+எங்கள் சூப்பர் மார்க்கெட் தீபாவளி சேமிப்பில் இணைந்தமைக்கு மனமார்ந்த நன்றி!
+✨ இனிய தீபாவளி நல்வாழ்த்துகள்! ✨`;
+}

@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { formatINR, formatDate } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
-import { Printer, ArrowLeft, Download, CheckCircle, ShieldCheck, Sparkles, BookOpen } from "lucide-react";
+import { Printer, ArrowLeft, Download, CheckCircle, ShieldCheck, Sparkles, BookOpen, Share2 } from "lucide-react";
+import { generatePassbookPDF, shareOrDownloadPDF, printPDF } from "@/lib/pdf";
 
 export default function CustomerPrintCardPage() {
   const params = useParams();
@@ -18,17 +19,33 @@ export default function CustomerPrintCardPage() {
   const [installments, setInstallments] = useState<any[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(initialMemberId);
   const [loading, setLoading] = useState(true);
+  const [sharingWa, setSharingWa] = useState(false);
+
+  // App Master Settings for Shop Header
+  const [appSettings, setAppSettings] = useState<any>({
+    shop_name: "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட் (SRI LAKSHMI SUPERMARKET)",
+    shop_address: "2a PP NAGAR MADURAI, MADURAI - 625016, Tamil Nadu",
+    shop_phone: "+91 96009 01937 / +91 91502 80795",
+    shop_gst: "33bsops67891zq",
+  });
 
   useEffect(() => {
-    fetch(`/api/customers/${customerId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setCustomer(data.customer);
-        const enrolled = data.schemes || [];
-        setSchemes(enrolled);
-        setInstallments(data.installments || []);
-        if (!selectedMemberId && enrolled.length > 0) {
-          setSelectedMemberId(enrolled[0].id);
+    Promise.all([
+      fetch(`/api/customers/${customerId}`).then((res) => res.json()),
+      fetch("/api/settings").then((res) => res.json()).catch(() => ({})),
+    ])
+      .then(([custData, settingsData]) => {
+        if (custData?.customer) {
+          setCustomer(custData.customer);
+          const enrolled = custData.schemes || [];
+          setSchemes(enrolled);
+          setInstallments(custData.installments || []);
+          if (!selectedMemberId && enrolled.length > 0) {
+            setSelectedMemberId(enrolled[0].id);
+          }
+        }
+        if (settingsData?.settings) {
+          setAppSettings(settingsData.settings);
         }
       })
       .finally(() => setLoading(false));
@@ -46,6 +63,37 @@ export default function CustomerPrintCardPage() {
   const memberInstallments = installments.filter((i) => i.member_id === selectedScheme.id);
   const displayInstallments = memberInstallments.length > 0 ? memberInstallments : installments.slice(0, 12);
 
+  const handleDownloadPDF = () => {
+    const doc = generatePassbookPDF(customer, selectedScheme, displayInstallments, appSettings);
+    doc.save(`Passbook_${selectedScheme.passbook_number || customer.customer_code}.pdf`);
+  };
+
+  const handleShareWhatsAppPDF = async () => {
+    setSharingWa(true);
+    try {
+      const doc = generatePassbookPDF(customer, selectedScheme, displayInstallments, appSettings);
+      const text = `🪔 *${appSettings.shop_name || "SRI LAKSHMI SUPERMARKET"}*\n*தீபாவளி சிட் பாஸ்புக் கார்டு (Diwali Chit Passbook)*\nவணக்கம் திரு/திருமதி. *${customer.full_name}*,\nபாஸ்புக் எண்: ${selectedScheme.passbook_number || "PB-PENDING"}\nதிட்டம்: ${selectedScheme.scheme_name || "-"}\nஉதவிக்கு: ${appSettings.shop_phone || ""}`;
+      await shareOrDownloadPDF(
+        doc,
+        `Passbook_${selectedScheme.passbook_number || customer.customer_code}.pdf`,
+        `Diwali Chit Passbook - ${customer.full_name}`,
+        customer.mobile,
+        text
+      );
+    } finally {
+      setSharingWa(false);
+    }
+  };
+
+  const handlePrint = () => {
+    try {
+      const doc = generatePassbookPDF(customer, selectedScheme, displayInstallments, appSettings);
+      printPDF(doc);
+    } catch {
+      window.print();
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Top Action Bar (hidden when printing) */}
@@ -59,10 +107,32 @@ export default function CustomerPrintCardPage() {
             <span>Back to Customer Profile</span>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* WhatsApp PDF Share Button */}
             <button
-              onClick={() => window.print()}
-              className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] px-5 py-2.5 rounded-xl text-xs font-black shadow-md shadow-amber-900/30"
+              onClick={handleShareWhatsAppPDF}
+              disabled={sharingWa}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all"
+              title="Share Passbook PDF via WhatsApp"
+            >
+              <Share2 className="h-4 w-4" />
+              <span>{sharingWa ? "Sharing..." : "WhatsApp Share PDF"}</span>
+            </button>
+
+            {/* Download PDF Button */}
+            <button
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/50 text-amber-300 shadow-md transition-all"
+              title="Download Passbook PDF"
+            >
+              <Download className="h-4 w-4 text-amber-400" />
+              <span>Download PDF</span>
+            </button>
+
+            {/* Print Passbook Button */}
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] px-4 py-2 rounded-xl text-xs font-black shadow-md shadow-amber-900/30"
             >
               <Printer className="h-4 w-4" />
               <span>Print Passbook (A4)</span>
@@ -107,14 +177,21 @@ export default function CustomerPrintCardPage() {
             <Logo size="lg" showText={false} />
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-rose-950 tracking-tight">
-                ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்
+                {appSettings.shop_name?.split("(")[0]?.trim() || "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்"}
               </h1>
               <h2 className="text-sm font-extrabold text-amber-800 tracking-wide">
-                SRI LAKSHMI SUPERMARKET • DIWALI CHIT FUND
+                {appSettings.shop_name?.includes("(")
+                  ? appSettings.shop_name.split("(")[1].replace(")", "").trim()
+                  : appSettings.shop_name || "SRI LAKSHMI SUPERMARKET"} • DIWALI CHIT FUND
               </h2>
               <p className="text-[11px] text-slate-600 font-medium">
-                124, பஜார் மெயின் ரோடு, சேலம் - 636001 | Phone: 98765 43210 / 94432 10987
+                {appSettings.shop_address || "2a PP NAGAR MADURAI, MADURAI - 625016, Tamil Nadu"} | Phone: {appSettings.shop_phone || "+91 96009 01937"}
               </p>
+              {appSettings.shop_gst && (
+                <p className="text-[10px] text-slate-500 font-mono font-bold">
+                  GSTIN: {appSettings.shop_gst}
+                </p>
+              )}
             </div>
           </div>
 

@@ -497,11 +497,6 @@ export default function LoginPage() {
             <span>Android App பதிவிறக்கம் (Download v1.3.1 APK)</span>
             <Download className="h-4 w-4 text-amber-400/80" />
           </a>
-          <p className="text-[10px] text-amber-200/60 mt-1.5 font-mono flex items-center justify-center gap-2 flex-wrap">
-            <span className="px-2 py-0.5 rounded bg-black/40 border border-amber-500/30 font-bold text-amber-300">v1.3.1</span>
-            <span>•</span>
-            <span>Default Mobile Login Screen • Master Settings & Razorpay Kit</span>
-          </p>
         </div>
       </div>
     </div>

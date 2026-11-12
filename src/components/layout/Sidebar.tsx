@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useLanguage } from "./LanguageContext";
 import { Logo } from "@/components/ui/Logo";
 import {
@@ -20,6 +20,7 @@ import {
   Building2,
   Settings,
   X,
+  LogOut,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -29,7 +30,17 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { t, language } = useLanguage();
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    router.push("/login");
+    router.refresh();
+  };
+
   const [currentBranch, setCurrentBranch] = useState<{ name: string; phone: string } | null>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -167,8 +178,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </div>
 
-        {/* Bottom Shop Info Banner */}
-        <div className="p-4 border-t border-amber-500/20 bg-gradient-to-b from-transparent to-[#1a0004]">
+        {/* Bottom Shop Info Banner & Logout */}
+        <div className="p-4 border-t border-amber-500/20 bg-gradient-to-b from-transparent to-[#1a0004] space-y-2">
           <div className="rounded-xl border border-amber-500/30 bg-[#360109]/90 p-3 shadow-inner">
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -183,6 +194,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {currentBranch?.phone || "+91 96009 01937"}
             </p>
           </div>
+
+          {/* Logout Option */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-black text-rose-300 hover:text-white bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/30 transition-all shadow-sm group"
+          >
+            <LogOut className="h-4 w-4 text-rose-400 group-hover:scale-110 transition-transform" />
+            <span>{language === "ta" ? "வெளியேறு (Logout)" : "Logout System"}</span>
+          </button>
         </div>
       </aside>
     </>

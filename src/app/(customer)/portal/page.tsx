@@ -407,16 +407,7 @@ export default function CustomerPortalPage() {
 
             <div className="flex flex-wrap items-center gap-2.5">
               <a
-                href="/DIWALI_CHIT_v1.2.0.apk"
-                download="DIWALI_CHIT_v1.2.0.apk"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-500/50 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition-all shadow-md group"
-              >
-                <Smartphone className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span>Download App (v1.2.0)</span>
-              </a>
-
-              <a
-                href="tel:9876543210"
+                href={`tel:${appSettings.shop_phone?.split("/")[0]?.replace(/[^0-9]/g, "") || "9600901937"}`}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-500/40 bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 text-xs font-bold transition-all"
               >
                 <Phone className="h-4 w-4" />
@@ -424,7 +415,10 @@ export default function CustomerPortalPage() {
               </a>
 
               <a
-                href={getWhatsAppShareUrl("9876543210", `Hello Sri Lakshmi Supermarket, I am ${customer.full_name} (${customer.customer_code}). I would like to inquire about my Diwali Chit balance.`)}
+                href={getWhatsAppShareUrl(
+                  appSettings.shop_phone?.split("/")[0]?.replace(/[^0-9]/g, "") || "9600901937",
+                  `Hello ${appSettings.shop_name || "Supermarket"}, I am ${customer.full_name} (${customer.customer_code}). I would like to inquire about my Diwali Chit balance.`
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-all"
@@ -911,7 +905,7 @@ export default function CustomerPortalPage() {
                     <a
                       href={getWhatsAppShareUrl(
                         customer.mobile,
-                        `வணக்கம் ${customer.full_name}, உங்களின் தீபாவளி சீட்டு (${payingMember.scheme_name}) தவணை எண் #${paySuccessData.installmentNumber} தொகை ₹${paySuccessData.amount} வெற்றிகரமாக பெறப்பட்டது. ரசீது எண்: ${paySuccessData.receiptNumber}. நன்றி! - ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்`
+                        `வணக்கம் ${customer.full_name}, உங்களின் தீபாவளி சீட்டு (${payingMember.scheme_name}) தவணை எண் #${paySuccessData.installmentNumber} தொகை ₹${paySuccessData.amount} வெற்றிகரமாக பெறப்பட்டது. ரசீது எண்: ${paySuccessData.receiptNumber}. நன்றி! - ${appSettings.shop_name || "SRI LAKSHMI SUPERMARKET"}`
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -1129,8 +1123,8 @@ export default function CustomerPortalPage() {
 
       {/* Footer */}
       <footer className="py-6 border-t border-amber-500/20 text-center text-xs text-amber-300/60 bg-[#1a0003]">
-        <p className="font-bold text-amber-300">ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட் • SRI LAKSHMI SUPERMARKET</p>
-        <p className="text-[11px] mt-1">124, Bazaar Main Road, Salem - 636001 | Customer Helpline: +91 98765 43210</p>
+        <p className="font-bold text-amber-300">{appSettings.shop_name || "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட் • SRI LAKSHMI SUPERMARKET"}</p>
+        <p className="text-[11px] mt-1">{appSettings.shop_address || "2a PP NAGAR MADURAI, MADURAI - 625016, Tamil Nadu"} | Customer Helpline: {appSettings.shop_phone || "+91 96009 01937"}</p>
       </footer>
     </div>
   );

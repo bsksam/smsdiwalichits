@@ -20,8 +20,11 @@ import {
   Share2,
   BookOpen,
   Filter,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
+import { generateRedemptionInvoicePDF, shareOrDownloadPDF, printPDF } from "@/lib/pdf";
+import { generateRedemptionInvoiceWhatsAppMessage } from "@/lib/whatsapp";
 
 export default function RedemptionsPage() {
   const { t, language } = useLanguage();
@@ -47,6 +50,69 @@ export default function RedemptionsPage() {
 
   // Viewing invoice modal
   const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+  const [sharingPdf, setSharingPdf] = useState(false);
+
+  // App Master Settings
+  const [appSettings, setAppSettings] = useState<any>({
+    shop_name: "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட் (SRI LAKSHMI SUPERMARKET)",
+    shop_address: "2a PP NAGAR MADURAI, MADURAI - 625016, Tamil Nadu",
+    shop_phone: "+91 96009 01937 / +91 91502 80795",
+    shop_gst: "33bsops67891zq",
+  });
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.settings) setAppSettings(data.settings);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleDownloadInvoicePDF = (invoice: any) => {
+    if (!invoice) return;
+    const doc = generateRedemptionInvoicePDF(invoice, appSettings);
+    doc.save(`Invoice_${invoice.redemption_number || "Redemption"}.pdf`);
+  };
+
+  const handleShareInvoiceWhatsAppPDF = async (invoice: any) => {
+    if (!invoice) return;
+    setSharingPdf(true);
+    try {
+      const doc = generateRedemptionInvoicePDF(invoice, appSettings);
+      const text = generateRedemptionInvoiceWhatsAppMessage({
+        customerName: invoice.customer_name || "Customer",
+        schemeName: invoice.scheme_name || "Diwali Chit",
+        passbookNumber: invoice.passbook_number || "PB-SCH",
+        invoiceNumber: invoice.redemption_number || "RED-INV",
+        packageName: invoice.package_tamil_name || invoice.package_name || "Diwali Grocery Hamper",
+        packageValue: Number(invoice.total_package_value) || 0,
+        shopName: appSettings.shop_name || "SRI LAKSHMI SUPERMARKET",
+        shopAddress: appSettings.shop_address || "2a PP NAGAR MADURAI",
+        shopPhone: appSettings.shop_phone || "+91 96009 01937",
+      });
+
+      await shareOrDownloadPDF(
+        doc,
+        `Invoice_${invoice.redemption_number || "Redemption"}.pdf`,
+        `Diwali Grocery Redemption Invoice - ${invoice.customer_name}`,
+        invoice.customer_mobile,
+        text
+      );
+    } finally {
+      setSharingPdf(false);
+    }
+  };
+
+  const handlePrintInvoice = (invoice: any) => {
+    if (!invoice) return;
+    try {
+      const doc = generateRedemptionInvoicePDF(invoice, appSettings);
+      printPDF(doc);
+    } catch {
+      window.print();
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -544,9 +610,20 @@ export default function RedemptionsPage() {
               <span className="text-xs font-black text-amber-400 uppercase tracking-widest">
                 DIWALI GROCERY REDEMPTION INVOICE
               </span>
-              <h2 className="text-lg font-black text-amber-300 font-serif">ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்</h2>
-              <p className="text-xs font-bold text-amber-200">SRI LAKSHMI SUPERMARKET</p>
-              <p className="text-[10px] text-amber-400/60">Salem - 636001 | Phone: 98765 43210</p>
+              <h2 className="text-lg font-black text-amber-300 font-serif">
+                {appSettings.shop_name?.split("(")[0]?.trim() || "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்"}
+              </h2>
+              <p className="text-xs font-bold text-amber-200">
+                {appSettings.shop_name?.includes("(")
+                  ? appSettings.shop_name.split("(")[1].replace(")", "").trim()
+                  : appSettings.shop_name || "SRI LAKSHMI SUPERMARKET"}
+              </p>
+              <p className="text-[11px] text-amber-200/90 font-medium">
+                {appSettings.shop_address || "2a PP NAGAR MADURAI, MADURAI - 625016, Tamil Nadu"}
+              </p>
+              <p className="text-[10px] text-amber-400 font-mono font-bold">
+                Phone: {appSettings.shop_phone || "+91 96009 01937"} {appSettings.shop_gst ? `| GST: ${appSettings.shop_gst}` : ""}
+              </p>
             </div>
 
             <div className="p-6 space-y-3 text-xs bg-[#240005]">
@@ -585,16 +662,40 @@ export default function RedemptionsPage() {
               </div>
             </div>
 
-            <div className="p-4 bg-[#1e0004] border-t border-amber-500/20 flex justify-end gap-2">
+            <div className="p-4 bg-[#1e0004] border-t border-amber-500/20 flex flex-wrap items-center justify-end gap-2">
               <button
                 onClick={() => setViewingInvoice(null)}
-                className="px-4 py-2 text-xs font-semibold text-amber-300/80 hover:bg-amber-500/10 rounded-xl border border-amber-500/20"
+                className="px-3.5 py-2 text-xs font-semibold text-amber-300/80 hover:bg-amber-500/10 rounded-xl border border-amber-500/20"
               >
                 Close
               </button>
+
+              {/* WhatsApp Share PDF Button */}
               <button
-                onClick={() => window.print()}
-                className="gold-gradient-btn px-5 py-2 text-[#1a0004] font-black text-xs rounded-xl shadow-md flex items-center gap-1.5"
+                onClick={() => handleShareInvoiceWhatsAppPDF(viewingInvoice)}
+                disabled={sharingPdf}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all"
+                title="Share PDF Invoice directly via WhatsApp"
+              >
+                <Share2 className="h-4 w-4" />
+                <span>{sharingPdf ? "Sharing..." : "WhatsApp Share PDF"}</span>
+              </button>
+
+              {/* Download PDF Button */}
+              <button
+                onClick={() => handleDownloadInvoicePDF(viewingInvoice)}
+                className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-300 font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all"
+                title="Download Official PDF Invoice"
+              >
+                <Download className="h-4 w-4 text-amber-400" />
+                <span>Download PDF</span>
+              </button>
+
+              {/* Print Invoice Button */}
+              <button
+                onClick={() => handlePrintInvoice(viewingInvoice)}
+                className="gold-gradient-btn px-4 py-2 text-[#1a0004] font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 hover:scale-105 transition-all"
+                title="Print Official Invoice"
               >
                 <Printer className="h-4 w-4" />
                 <span>Print Invoice</span>
