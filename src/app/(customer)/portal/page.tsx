@@ -23,6 +23,11 @@ import {
   Clock,
   X,
   Smartphone,
+  CreditCard,
+  QrCode,
+  Copy,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -44,6 +49,75 @@ export default function CustomerPortalPage() {
   const [joining, setJoining] = useState(false);
   const [joinSuccessMsg, setJoinSuccessMsg] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
+
+  // Pay Next Installment Modal
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payingMember, setPayingMember] = useState<any>(null);
+  const [payingInstallment, setPayingInstallment] = useState<any>(null);
+  const [paymentMode, setPaymentMode] = useState<string>("UPI");
+  const [utrNumber, setUtrNumber] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [paySuccessData, setPaySuccessData] = useState<any>(null);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [copiedUpi, setCopiedUpi] = useState(false);
+
+  const getNextPendingInstallment = (memberId: number) => {
+    return installments.find(
+      (i) => i.member_id === memberId && i.status !== "paid"
+    );
+  };
+
+  const handleOpenPayModal = (scheme: any, installment?: any) => {
+    const targetInst = installment || getNextPendingInstallment(scheme.id);
+    setPayingMember(scheme);
+    setPayingInstallment(targetInst);
+    setPaymentMode("UPI");
+    setUtrNumber("");
+    setPayError(null);
+    setPaySuccessData(null);
+    setCopiedUpi(false);
+    setPayModalOpen(true);
+  };
+
+  const handleConfirmPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payingMember || !payingInstallment) return;
+    setPaying(true);
+    setPayError(null);
+
+    try {
+      const res = await fetch("/api/customer/pay-installment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberId: payingMember.id,
+          installmentId: payingInstallment.id,
+          paymentMode,
+          transactionRef: utrNumber,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Payment failed");
+      }
+
+      setPaySuccessData(data);
+      fetchCustomerData();
+    } catch (err: any) {
+      setPayError(err.message || "Failed to process payment");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const handleCopyUpi = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText("9600901937@okaxis");
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2000);
+    }
+  };
 
   const fetchCustomerData = async () => {
     try {
@@ -198,12 +272,12 @@ export default function CustomerPortalPage() {
 
             <div className="flex flex-wrap items-center gap-2.5">
               <a
-                href="/DIWALI_CHIT_v1.1.0.apk"
-                download="DIWALI_CHIT_v1.1.0.apk"
+                href="/DIWALI_CHIT_v1.2.0.apk"
+                download="DIWALI_CHIT_v1.2.0.apk"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-500/50 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition-all shadow-md group"
               >
                 <Smartphone className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span>Download App (v1.1.0)</span>
+                <span>Download App (v1.2.0)</span>
               </a>
 
               <a
@@ -311,6 +385,35 @@ export default function CustomerPortalPage() {
                       </div>
                     </div>
 
+                    {/* Pay Next Installment Button on Scheme Card */}
+                    <div className="pt-2">
+                      {(() => {
+                        const nextPending = getNextPendingInstallment(s.id);
+                        if (nextPending) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenPayModal(s, nextPending);
+                              }}
+                              className="w-full py-2.5 px-3 rounded-2xl gold-gradient-btn text-[#1a0004] font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:shadow-amber-500/30 transition-all hover:scale-[1.02]"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                              <span>Pay Month #{nextPending.installment_number} ({formatINR(nextPending.amount)})</span>
+                            </button>
+                          );
+                        } else {
+                          return (
+                            <div className="w-full py-2 px-3 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-bold text-xs text-center flex items-center justify-center gap-1.5">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                              <span>All 12 Installments Paid! 🎉</span>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+
                     <div className="flex justify-between items-center pt-2 border-t border-amber-500/20 text-xs">
                       <span className="text-[11px] text-amber-300 font-bold flex items-center gap-1">
                         <BookOpen className="h-3 w-3" />
@@ -392,9 +495,20 @@ export default function CustomerPortalPage() {
                                 {inst.receipt_number || "-"}
                               </td>
                               <td className="py-3 px-4 text-center">
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(inst.status)}`}>
-                                  {inst.status}
-                                </span>
+                                {isPaid ? (
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(inst.status)}`}>
+                                    {inst.status}
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPayModal(activeScheme, inst)}
+                                    className="px-3 py-1 rounded-xl gold-gradient-btn text-[#1a0004] font-black text-[11px] shadow-md hover:scale-105 transition-all inline-flex items-center gap-1"
+                                  >
+                                    <CreditCard className="h-3 w-3" />
+                                    <span>Pay Now</span>
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           );
@@ -535,6 +649,238 @@ export default function CustomerPortalPage() {
                   {joining ? "Enrolling..." : "Confirm & Get Passbook"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay Next Installment Modal */}
+      {payModalOpen && payingMember && payingInstallment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="maroon-card w-full max-w-lg rounded-3xl border border-amber-400/80 shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-amber-500/20 bg-gradient-to-r from-[#3e010c] to-[#250005]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white p-1 border border-amber-400 flex items-center justify-center shadow-md">
+                  <img src="/logo.png" alt="smstreat Logo" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-amber-300 font-serif">
+                    {paySuccessData ? "Payment Successful! 🎉" : "தவணை செலுத்துதல் (Pay Chit Due)"}
+                  </h3>
+                  <p className="text-[10px] text-amber-400/80 font-bold uppercase font-mono">
+                    Passbook: {payingMember.passbook_number}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPayModalOpen(false)}
+                className="p-1.5 text-amber-300 hover:bg-amber-500/10 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5 text-xs bg-[#240005] max-h-[80vh] overflow-y-auto">
+              {paySuccessData ? (
+                /* SUCCESS RECEIPT VIEW */
+                <div className="text-center space-y-4 py-2">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center mx-auto text-emerald-400 shadow-lg shadow-emerald-950/60">
+                    <CheckCircle2 className="h-8 w-8" />
+                  </div>
+
+                  <div>
+                    <h4 className="text-lg font-black text-emerald-300 font-serif">
+                      ₹{paySuccessData.amount?.toLocaleString("en-IN")} Payment Received!
+                    </h4>
+                    <p className="text-xs text-amber-200/80 mt-1">
+                      Month #{paySuccessData.installmentNumber} installment paid for <span className="font-bold text-amber-300">{paySuccessData.schemeName}</span>
+                    </p>
+                  </div>
+
+                  {/* Receipt Voucher Box */}
+                  <div className="p-4 bg-[#180003] rounded-2xl border border-amber-500/30 text-left space-y-2 font-mono">
+                    <div className="flex justify-between text-xs border-b border-amber-500/20 pb-2">
+                      <span className="text-amber-400/70">Receipt Number:</span>
+                      <span className="font-bold text-amber-300">{paySuccessData.receiptNumber}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-amber-400/70">Passbook #:</span>
+                      <span className="font-bold text-amber-200">{paySuccessData.passbookNumber}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-amber-400/70">Date:</span>
+                      <span className="font-bold text-amber-200">{paySuccessData.paymentDate}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-amber-400/70">Customer:</span>
+                      <span className="font-bold text-amber-200">{customer.full_name} ({customer.customer_code})</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                    <Link
+                      href={`/customers/print-card/${customer.id}?memberId=${payingMember.id}`}
+                      target="_blank"
+                      className="flex-1 py-2.5 px-4 rounded-xl gold-gradient-btn text-[#1a0004] font-black text-xs flex items-center justify-center gap-2 shadow-md"
+                    >
+                      <Printer className="h-4 w-4" />
+                      <span>Print Passbook Receipt</span>
+                    </Link>
+
+                    <a
+                      href={getWhatsAppShareUrl(
+                        customer.mobile,
+                        `வணக்கம் ${customer.full_name}, உங்களின் தீபாவளி சீட்டு (${payingMember.scheme_name}) தவணை எண் #${paySuccessData.installmentNumber} தொகை ₹${paySuccessData.amount} வெற்றிகரமாக பெறப்பட்டது. ரசீது எண்: ${paySuccessData.receiptNumber}. நன்றி! - ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்`
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      <span>Share on WhatsApp</span>
+                    </a>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setPayModalOpen(false)}
+                    className="w-full py-2 text-xs font-bold text-amber-400 hover:underline pt-2"
+                  >
+                    Close & View Updated Ledger
+                  </button>
+                </div>
+              ) : (
+                /* PAYMENT FORM VIEW */
+                <form onSubmit={handleConfirmPayment} className="space-y-4">
+                  {payError && (
+                    <div className="p-3 bg-rose-950/80 text-rose-300 rounded-xl border border-rose-500/40 font-semibold">
+                      {payError}
+                    </div>
+                  )}
+
+                  {/* Scheme & Amount Summary */}
+                  <div className="p-4 bg-[#180003] rounded-2xl border border-amber-500/30 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-amber-400/70 font-serif uppercase tracking-wider block">
+                        Due Installment
+                      </span>
+                      <h4 className="font-bold text-amber-100 text-sm">{payingMember.scheme_name}</h4>
+                      <p className="text-[11px] text-amber-300/80 mt-0.5">
+                        Month #{payingInstallment.installment_number} • Due: {formatDate(payingInstallment.due_date)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-amber-400/70 block">Total Due</span>
+                      <span className="text-2xl font-black text-amber-300 font-serif">
+                        {formatINR(payingInstallment.amount)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Supermarket UPI QR Code Box */}
+                  <div className="p-4 bg-gradient-to-b from-[#2a0006] to-[#1c0003] rounded-2xl border border-amber-500/30 text-center space-y-3">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                      <QrCode className="h-3.5 w-3.5 text-amber-400" />
+                      <span>Scan & Pay with Any UPI App</span>
+                    </div>
+
+                    <div className="flex justify-center my-2">
+                      <div className="p-2.5 bg-white rounded-2xl shadow-xl border-2 border-amber-400">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=upi%3A%2F%2Fpay%3Fpa%3D9600901937%40okaxis%26pn%3DDiwali%2BChit%2BSupermarket%26am%3D${payingInstallment.amount}%26cu%3DINR`}
+                          alt="UPI Payment QR Code"
+                          className="w-36 h-36 object-contain"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Copy UPI ID */}
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="font-mono text-xs text-amber-200 bg-black/40 px-3 py-1.5 rounded-xl border border-amber-500/30">
+                        UPI: 9600901937@okaxis
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyUpi}
+                        className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 rounded-xl text-amber-300 transition-colors"
+                        title="Copy UPI ID"
+                      >
+                        {copiedUpi ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+
+                    {/* Mobile UPI Intent Button */}
+                    <div className="pt-1">
+                      <a
+                        href={`upi://pay?pa=9600901937@okaxis&pn=Diwali+Chit+Supermarket&am=${payingInstallment.amount}&cu=INR`}
+                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 text-amber-400" />
+                        <span>Open in Google Pay / PhonePe / Paytm</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Payment Mode Selector */}
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-amber-300 uppercase tracking-wide block">
+                      Select Payment Mode:
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {["UPI", "Card", "Bank Transfer"].map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setPaymentMode(mode)}
+                          className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                            paymentMode === mode
+                              ? "bg-amber-500 text-slate-950 border-amber-400 shadow-md font-black"
+                              : "bg-[#180003] text-amber-200 border-amber-500/30 hover:bg-amber-500/10"
+                          }`}
+                        >
+                          {mode}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Transaction Ref / UTR */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-amber-300 block">
+                      UPI Reference / UTR Number (Optional):
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 432198765432 or leave blank"
+                      value={utrNumber}
+                      onChange={(e) => setUtrNumber(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-[#180003] border border-amber-500/30 rounded-xl text-amber-100 font-mono focus:border-amber-400 outline-none"
+                    />
+                  </div>
+
+                  {/* Confirm Button */}
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={paying}
+                      className="w-full py-3 rounded-2xl gold-gradient-btn text-[#1a0004] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl hover:shadow-amber-500/30 transition-all hover:scale-[1.02]"
+                    >
+                      {paying ? (
+                        <span>Processing Payment...</span>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4" />
+                          <span>Confirm & Pay {formatINR(payingInstallment.amount)}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>

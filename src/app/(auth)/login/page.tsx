@@ -480,16 +480,16 @@ export default function LoginPage() {
         {/* APK Download Button for Android Users */}
         <div className="mt-5 pt-4 border-t border-amber-500/20 text-center w-full">
           <a
-            href="/DIWALI_CHIT_v1.1.0.apk"
-            download="DIWALI_CHIT_v1.1.0.apk"
+            href="/DIWALI_CHIT_v1.2.0.apk"
+            download="DIWALI_CHIT_v1.2.0.apk"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all shadow-lg hover:shadow-amber-500/20 group"
           >
             <Smartphone className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
-            <span>Android App பதிவிறக்கம் (Download v1.1.0 APK)</span>
+            <span>Android App பதிவிறக்கம் (Download v1.2.0 APK)</span>
             <Download className="h-4 w-4 text-amber-400/80" />
           </a>
           <p className="text-[10px] text-amber-200/50 mt-1 font-mono">
-            Version 1.1.0 • Release Ready • Direct Android Install (5.09 MB)
+            Version 1.2.0 • Modern smstreat App Icon • Self-Service Payment
           </p>
         </div>
       </div>
