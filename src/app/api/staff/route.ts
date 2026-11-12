@@ -69,3 +69,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to create staff member" }, { status: 500 });
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !["super_admin", "admin"].includes(currentUser.role)) {
+      return NextResponse.json({ error: "Only Admins can edit staff accounts" }, { status: 403 });
+    }
+
+    const data = await req.json();
+    const { id, fullName, mobile, role, branchId, status, newPassword } = data;
+
+    if (!id || !fullName || !mobile || !role) {
+      return NextResponse.json({ error: "Staff ID, Full Name, Mobile, and Role are required" }, { status: 400 });
+    }
+
+    if (newPassword && newPassword.trim().length >= 4) {
+      const passwordHash = await bcrypt.hash(newPassword.trim(), 10);
+      await client.execute({
+        sql: `UPDATE users 
+              SET full_name = ?, mobile = ?, role = ?, branch_id = ?, status = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?`,
+        args: [fullName.trim(), mobile.trim(), role, branchId || 1, status || "active", passwordHash, id],
+      });
+    } else {
+      await client.execute({
+        sql: `UPDATE users 
+              SET full_name = ?, mobile = ?, role = ?, branch_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?`,
+        args: [fullName.trim(), mobile.trim(), role, branchId || 1, status || "active", id],
+      });
+    }
+
+    await logAudit({
+      userId: currentUser.id,
+      action: "UPDATE_STAFF",
+      entityType: "user",
+      entityId: id,
+      details: { fullName, role, branchId, status, passwordUpdated: Boolean(newPassword) },
+    });
+
+    return NextResponse.json({ success: true, message: "Staff user updated successfully" });
+  } catch (error: any) {
+    console.error("Staff update error:", error);
+    return NextResponse.json({ error: "Failed to update staff member" }, { status: 500 });
+  }
+}

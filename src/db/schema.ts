@@ -50,6 +50,7 @@ export const customers = sqliteTable("customers", {
   nomineeName: text("nominee_name"),
   nomineeRelation: text("nominee_relation"),
   nomineeMobile: text("nominee_mobile"),
+  passwordHash: text("password_hash"),
   branchId: integer("branch_id").references(() => branches.id),
   status: text("status").default("active"), // active, inactive, blocked
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),

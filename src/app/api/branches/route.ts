@@ -61,3 +61,58 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to create branch" }, { status: 500 });
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !["super_admin", "admin"].includes(currentUser.role)) {
+      return NextResponse.json({ error: "Only Admins can edit branches" }, { status: 403 });
+    }
+
+    const data = await req.json();
+    const { id, name, address, city, district, pincode, phone, email, isMainBranch } = data;
+
+    if (!id || !name || !address || !city || !phone) {
+      return NextResponse.json({ error: "Branch ID, Name, Address, City, and Phone are required" }, { status: 400 });
+    }
+
+    // If marked as main branch, unmark others
+    if (isMainBranch) {
+      await client.execute({
+        sql: "UPDATE branches SET is_main_branch = 0",
+        args: [],
+      });
+    }
+
+    await client.execute({
+      sql: `UPDATE branches 
+            SET name = ?, address = ?, city = ?, district = ?, pincode = ?, phone = ?, email = ?, 
+                is_main_branch = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?`,
+      args: [
+        name.trim(),
+        address.trim(),
+        city.trim(),
+        district || "Salem",
+        pincode || "636001",
+        phone.trim(),
+        email || null,
+        isMainBranch ? 1 : 0,
+        id,
+      ],
+    });
+
+    await logAudit({
+      userId: currentUser.id,
+      action: "UPDATE_BRANCH",
+      entityType: "branch",
+      entityId: id,
+      details: { name, city, phone, isMainBranch },
+    });
+
+    return NextResponse.json({ success: true, message: "Branch updated successfully" });
+  } catch (error: any) {
+    console.error("Branch update error:", error);
+    return NextResponse.json({ error: "Failed to update branch" }, { status: 500 });
+  }
+}

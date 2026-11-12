@@ -9,6 +9,8 @@ export interface SessionUser {
   fullName: string;
   role: string;
   branchId?: number | null;
+  customerId?: number;
+  mobile?: string;
 }
 
 export function signToken(user: SessionUser): string {
@@ -28,4 +30,13 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   const token = cookieStore.get("diwali_chit_session")?.value;
   if (!token) return null;
   return verifyToken(token);
+}
+
+export async function getCurrentCustomer(): Promise<SessionUser | null> {
+  const cookieStore = cookies();
+  const token = cookieStore.get("diwali_chit_customer_session")?.value;
+  if (!token) return null;
+  const user = verifyToken(token);
+  if (!user || user.role !== "customer") return null;
+  return user;
 }
