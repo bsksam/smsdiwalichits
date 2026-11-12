@@ -12,13 +12,20 @@ export async function POST(req: Request) {
 
     const customerId = session.customerId;
     const body = await req.json();
-    const { memberId, installmentId, paymentMode = "UPI", transactionRef, remarks } = body;
+    const { memberId, installmentId, paymentMode = "UPI", transactionRef, lateFee = 0, discount = 0, remarks } = body;
 
     if (!memberId) {
       return NextResponse.json({ error: "Enrolled Scheme Member ID is required" }, { status: 400 });
     }
 
-    // 1. Verify scheme member belongs to logged-in customer
+    // 1. Check if Payment Lock Days is active in app_settings
+    const settingsRes = await client.execute("SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('payment_lock_enabled', 'payment_lock_days', 'payment_lock_message')");
+    const settingsMap: Record<string, string> = {};
+    for (const r of settingsRes.rows) {
+      settingsMap[String(r.setting_key)] = String(r.setting_value);
+    }
+
+    // Verify scheme member belongs to logged-in customer
     const memberRes = await client.execute({
       sql: `SELECT sm.*, s.name as scheme_name, s.monthly_amount, s.total_months 
             FROM scheme_members sm
@@ -59,7 +66,22 @@ export async function POST(req: Request) {
       targetInst = nextRes.rows[0];
     }
 
-    const amount = Number(targetInst.amount) || Number(member.monthly_amount);
+    // Check payment lock enforcement
+    if (settingsMap.payment_lock_enabled === "true") {
+      const lockDays = parseInt(settingsMap.payment_lock_days || "10", 10);
+      const dueDate = new Date(targetInst.due_date);
+      const lockCutoff = new Date(dueDate.getTime() + lockDays * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      if (now > lockCutoff) {
+        const lockMsg = settingsMap.payment_lock_message || "Online payment is locked for this installment. Please visit our store counter.";
+        return NextResponse.json({ error: lockMsg }, { status: 403 });
+      }
+    }
+
+    const baseAmount = Number(targetInst.amount) || Number(member.monthly_amount);
+    const appliedLateFee = Number(lateFee) || 0;
+    const appliedDiscount = Number(discount) || 0;
+    const totalAmount = baseAmount + appliedLateFee - appliedDiscount;
     const payDate = new Date().toISOString().split("T")[0];
     const year = new Date().getFullYear();
 
@@ -72,7 +94,7 @@ export async function POST(req: Request) {
     const insertPaymentRes = await client.execute({
       sql: `INSERT INTO payments 
             (receipt_number, customer_id, scheme_id, member_id, installment_id, installment_number, amount, discount, late_fee, total_amount, payment_date, payment_mode, transaction_ref, collected_by_user_id, branch_id, remarks, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, 1, ?, ?, 'completed')`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'completed')`,
       args: [
         receiptNumber,
         customerId,
@@ -80,8 +102,10 @@ export async function POST(req: Request) {
         memberId,
         targetInst.id,
         targetInst.installment_number,
-        amount,
-        amount,
+        baseAmount,
+        appliedDiscount,
+        appliedLateFee,
+        totalAmount,
         payDate,
         paymentMode.toUpperCase(),
         transactionRef ? transactionRef.trim() : null,
@@ -100,7 +124,7 @@ export async function POST(req: Request) {
         receiptNumber,
         paymentId,
         customerId,
-        amount,
+        totalAmount,
         paymentMode.toUpperCase(),
         payDate,
         `Self payment for ${member.scheme_name} (Month #${targetInst.installment_number})`,
@@ -112,7 +136,7 @@ export async function POST(req: Request) {
       sql: `UPDATE installments 
             SET paid_amount = ?, status = 'paid', paid_date = ?, receipt_id = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?`,
-      args: [amount, payDate, paymentId, targetInst.id],
+      args: [baseAmount, payDate, paymentId, targetInst.id],
     });
 
     // 7. Update Scheme Member progress
@@ -123,7 +147,7 @@ export async function POST(req: Request) {
                 total_pending_amount = MAX(0, total_pending_amount - ?),
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?`,
-      args: [amount, amount, memberId],
+      args: [baseAmount, baseAmount, memberId],
     });
 
     // 8. Audit Log
@@ -134,7 +158,9 @@ export async function POST(req: Request) {
       entityId: paymentId,
       details: {
         receiptNumber,
-        amount,
+        amount: totalAmount,
+        baseAmount,
+        lateFee: appliedLateFee,
         installmentNumber: targetInst.installment_number,
         paymentMode,
         passbookNumber: member.passbook_number,
@@ -146,11 +172,13 @@ export async function POST(req: Request) {
       receiptNumber,
       paymentId,
       installmentNumber: targetInst.installment_number,
-      amount,
+      amount: totalAmount,
+      baseAmount,
+      lateFee: appliedLateFee,
       paymentDate: payDate,
       passbookNumber: member.passbook_number,
       schemeName: member.scheme_name,
-      message: `Payment of ₹${amount.toLocaleString("en-IN")} received successfully! Receipt #${receiptNumber}`,
+      message: `Payment of ₹${totalAmount.toLocaleString("en-IN")} received successfully! Receipt #${receiptNumber}`,
     });
   } catch (error: any) {
     console.error("Customer payment error:", error);

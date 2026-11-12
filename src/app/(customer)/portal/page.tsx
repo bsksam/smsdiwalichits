@@ -28,6 +28,9 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Lock,
+  Percent,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -50,6 +53,9 @@ export default function CustomerPortalPage() {
   const [joinSuccessMsg, setJoinSuccessMsg] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
 
+  // App Master Settings
+  const [appSettings, setAppSettings] = useState<Record<string, string>>({});
+
   // Pay Next Installment Modal
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [payingMember, setPayingMember] = useState<any>(null);
@@ -61,14 +67,51 @@ export default function CustomerPortalPage() {
   const [payError, setPayError] = useState<string | null>(null);
   const [copiedUpi, setCopiedUpi] = useState(false);
 
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.settings) setAppSettings(d.settings);
+      })
+      .catch(() => {});
+  }, []);
+
   const getNextPendingInstallment = (memberId: number) => {
     return installments.find(
       (i) => i.member_id === memberId && i.status !== "paid"
     );
   };
 
+  const isInstallmentLocked = (inst: any) => {
+    if (appSettings.payment_lock_enabled !== "true") return false;
+    if (!inst || !inst.due_date) return false;
+    const lockDays = parseInt(appSettings.payment_lock_days || "10", 10);
+    const dueDate = new Date(inst.due_date);
+    const cutoff = new Date(dueDate.getTime() + lockDays * 24 * 60 * 60 * 1000);
+    return new Date() > cutoff;
+  };
+
+  const calculateLateInterest = (inst: any) => {
+    if (appSettings.interest_calculation_enabled !== "true") return 0;
+    if (!inst || !inst.due_date) return 0;
+    const cutOffDay = parseInt(appSettings.interest_due_day || "5", 10);
+    const today = new Date();
+    const isLate = today.getDate() > cutOffDay || new Date() > new Date(inst.due_date);
+    if (!isLate) return 0;
+    const pct = parseFloat(appSettings.interest_percentage || "2") || 0;
+    const base = Number(inst.amount) || 700;
+    return Math.round(base * (pct / 100));
+  };
+
   const handleOpenPayModal = (scheme: any, installment?: any) => {
     const targetInst = installment || getNextPendingInstallment(scheme.id);
+    if (isInstallmentLocked(targetInst)) {
+      alert(
+        appSettings.payment_lock_message ||
+          "Payment window is closed for this installment. Please visit our store counter."
+      );
+      return;
+    }
     setPayingMember(scheme);
     setPayingInstallment(targetInst);
     setPaymentMode("UPI");
@@ -85,6 +128,8 @@ export default function CustomerPortalPage() {
     setPaying(true);
     setPayError(null);
 
+    const lateInterest = calculateLateInterest(payingInstallment);
+
     try {
       const res = await fetch("/api/customer/pay-installment", {
         method: "POST",
@@ -94,6 +139,7 @@ export default function CustomerPortalPage() {
           installmentId: payingInstallment.id,
           paymentMode,
           transactionRef: utrNumber,
+          lateFee: lateInterest,
         }),
       });
 
@@ -108,6 +154,95 @@ export default function CustomerPortalPage() {
       setPayError(err.message || "Failed to process payment");
     } finally {
       setPaying(false);
+    }
+  };
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePayViaRazorpay = async () => {
+    if (!payingMember || !payingInstallment) return;
+    const keyId = appSettings.razorpay_key_id;
+    if (!keyId) {
+      setPayError("Razorpay Key ID not configured in Master Settings.");
+      return;
+    }
+
+    setPaying(true);
+    setPayError(null);
+
+    const isLoaded = await loadRazorpayScript();
+    if (!isLoaded) {
+      setPaying(false);
+      setPayError("Failed to load Razorpay Checkout SDK. Please check your internet connection.");
+      return;
+    }
+
+    const baseAmount = Number(payingInstallment.amount);
+    const lateInterest = calculateLateInterest(payingInstallment);
+    const totalAmount = baseAmount + lateInterest;
+
+    const options = {
+      key: keyId,
+      amount: Math.round(totalAmount * 100),
+      currency: "INR",
+      name: appSettings.razorpay_merchant_name || appSettings.shop_name || "DIWALI CHIT",
+      description: `Diwali Chit Month #${payingInstallment.installment_number} (${payingMember.passbook_number})`,
+      image: "/logo.png",
+      prefill: {
+        name: customer?.full_name || "",
+        contact: customer?.mobile || "",
+      },
+      theme: {
+        color: "#5c0515",
+      },
+      handler: async function (response: any) {
+        try {
+          const res = await fetch("/api/customer/pay-installment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              memberId: payingMember.id,
+              installmentId: payingInstallment.id,
+              paymentMode: "RAZORPAY",
+              transactionRef: response.razorpay_payment_id || "RPAY_" + Date.now(),
+              lateFee: lateInterest,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Payment recording failed");
+          setPaySuccessData(data);
+          fetchCustomerData();
+        } catch (e: any) {
+          setPayError(e.message || "Payment recording failed");
+        } finally {
+          setPaying(false);
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          setPaying(false);
+        },
+      },
+    };
+
+    try {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      setPaying(false);
+      setPayError(err.message || "Could not launch Razorpay checkout");
     }
   };
 
@@ -390,6 +525,27 @@ export default function CustomerPortalPage() {
                       {(() => {
                         const nextPending = getNextPendingInstallment(s.id);
                         if (nextPending) {
+                          const isLocked = isInstallmentLocked(nextPending);
+                          if (isLocked) {
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  alert(
+                                    appSettings.payment_lock_message ||
+                                      "Payment window is locked for this installment. Please visit our store counter."
+                                  );
+                                }}
+                                className="w-full py-2.5 px-3 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-300 font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-not-allowed"
+                              >
+                                <Lock className="h-4 w-4 text-rose-400" />
+                                <span>Month #{nextPending.installment_number} Locked (Visit Counter)</span>
+                              </button>
+                            );
+                          }
+                          const lateInterest = calculateLateInterest(nextPending);
+                          const total = Number(nextPending.amount) + lateInterest;
                           return (
                             <button
                               type="button"
@@ -400,7 +556,14 @@ export default function CustomerPortalPage() {
                               className="w-full py-2.5 px-3 rounded-2xl gold-gradient-btn text-[#1a0004] font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:shadow-amber-500/30 transition-all hover:scale-[1.02]"
                             >
                               <CreditCard className="h-4 w-4" />
-                              <span>Pay Month #{nextPending.installment_number} ({formatINR(nextPending.amount)})</span>
+                              <span>
+                                Pay Month #{nextPending.installment_number} ({formatINR(total)})
+                                {lateInterest > 0 && (
+                                  <span className="text-[10px] ml-1 bg-rose-950 text-rose-300 px-1.5 py-0.5 rounded font-mono">
+                                    +₹{lateInterest} Late Int
+                                  </span>
+                                )}
+                              </span>
                             </button>
                           );
                         } else {
@@ -498,6 +661,20 @@ export default function CustomerPortalPage() {
                                 {isPaid ? (
                                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(inst.status)}`}>
                                     {inst.status}
+                                  </span>
+                                ) : isInstallmentLocked(inst) ? (
+                                  <span
+                                    title={appSettings.payment_lock_message || "Online payment locked"}
+                                    onClick={() =>
+                                      alert(
+                                        appSettings.payment_lock_message ||
+                                          "Online payment is locked for this installment. Please visit our store counter."
+                                      )
+                                    }
+                                    className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-rose-500/40 bg-rose-950/60 text-rose-300 inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Lock className="h-2.5 w-2.5" />
+                                    <span>Locked</span>
                                   </span>
                                 ) : (
                                   <button
@@ -762,24 +939,88 @@ export default function CustomerPortalPage() {
                     </div>
                   )}
 
-                  {/* Scheme & Amount Summary */}
-                  <div className="p-4 bg-[#180003] rounded-2xl border border-amber-500/30 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-amber-400/70 font-serif uppercase tracking-wider block">
-                        Due Installment
-                      </span>
-                      <h4 className="font-bold text-amber-100 text-sm">{payingMember.scheme_name}</h4>
-                      <p className="text-[11px] text-amber-300/80 mt-0.5">
-                        Month #{payingInstallment.installment_number} • Due: {formatDate(payingInstallment.due_date)}
+                  {/* Scheme & Amount Summary with Interest Breakdown */}
+                  {(() => {
+                    const baseAmt = Number(payingInstallment.amount);
+                    const lateInt = calculateLateInterest(payingInstallment);
+                    const totalDue = baseAmt + lateInt;
+                    const cutOffDay = appSettings.interest_due_day || "5";
+                    const intPct = appSettings.interest_percentage || "2";
+
+                    return (
+                      <div className="space-y-2">
+                        <div className="p-4 bg-[#180003] rounded-2xl border border-amber-500/30 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-amber-400/70 font-serif uppercase tracking-wider block">
+                              Due Installment
+                            </span>
+                            <h4 className="font-bold text-amber-100 text-sm">{payingMember.scheme_name}</h4>
+                            <p className="text-[11px] text-amber-300/80 mt-0.5">
+                              Month #{payingInstallment.installment_number} • Due Date: {formatDate(payingInstallment.due_date)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-amber-400/70 block">Total Payable</span>
+                            <span className="text-2xl font-black text-amber-300 font-serif">
+                              {formatINR(totalDue)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Late Interest Alert */}
+                        {lateInt > 0 && (
+                          <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/30 flex items-center justify-between text-xs font-mono">
+                            <div className="flex items-center gap-1.5 text-amber-200">
+                              <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+                              <span>Installment: ₹{baseAmt} + Late Interest ({intPct}% after {cutOffDay}th):</span>
+                            </div>
+                            <span className="font-bold text-rose-400">+₹{lateInt}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* RAZORPAY PAYMENT GATEWAY KIT OPTION */}
+                  {appSettings.razorpay_enabled === "true" && appSettings.razorpay_key_id && (
+                    <div className="p-4 bg-gradient-to-r from-[#200005] via-[#38020c] to-[#200005] rounded-2xl border-2 border-amber-400/80 text-center space-y-3 shadow-xl">
+                      <div className="flex items-center justify-center gap-2">
+                        <CreditCard className="h-4 w-4 text-amber-400" />
+                        <span className="text-xs font-black text-amber-300 font-serif tracking-wide">
+                          RAZORPAY SECURE PAYMENT GATEWAY
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-400/40">
+                          Kit Active
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-amber-200/80">
+                        Pay securely with Google Pay, PhonePe, Paytm, Any Credit/Debit Card or Net Banking.
                       </p>
+                      <button
+                        type="button"
+                        onClick={handlePayViaRazorpay}
+                        disabled={paying}
+                        className="w-full py-3 px-4 rounded-xl gold-gradient-btn text-[#1a0004] font-black text-xs flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition-all uppercase tracking-wider"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        <span>
+                          {paying
+                            ? "Opening Razorpay..."
+                            : `Pay ₹${(Number(payingInstallment.amount) + calculateLateInterest(payingInstallment)).toLocaleString("en-IN")} via Razorpay Kit`}
+                        </span>
+                      </button>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-amber-400/70 block">Total Due</span>
-                      <span className="text-2xl font-black text-amber-300 font-serif">
-                        {formatINR(payingInstallment.amount)}
+                  )}
+
+                  {appSettings.razorpay_enabled === "true" && appSettings.razorpay_key_id && (
+                    <div className="relative flex py-1 items-center">
+                      <div className="flex-grow border-t border-amber-500/20"></div>
+                      <span className="flex-shrink mx-4 text-[10px] text-amber-400/60 uppercase font-bold">
+                        OR SCAN & PAY VIA DIRECT STORE UPI
                       </span>
+                      <div className="flex-grow border-t border-amber-500/20"></div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Supermarket UPI QR Code Box */}
                   <div className="p-4 bg-gradient-to-b from-[#2a0006] to-[#1c0003] rounded-2xl border border-amber-500/30 text-center space-y-3">

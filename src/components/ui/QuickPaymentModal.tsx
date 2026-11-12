@@ -477,6 +477,7 @@ export function QuickPaymentModal({
                       >
                         <option value="cash">Cash (ரொக்கம்)</option>
                         <option value="upi">UPI / GPay / PhonePe</option>
+                        <option value="razorpay">Razorpay Online Gateway</option>
                         <option value="bank_transfer">Bank Transfer (NEFT/IMPS)</option>
                         <option value="card">Card (Debit/Credit)</option>
                       </select>
