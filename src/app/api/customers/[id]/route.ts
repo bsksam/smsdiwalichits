@@ -24,41 +24,49 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     // 2. Enrolled Schemes
     const schemesRes = await client.execute({
       sql: `SELECT sm.*, s.name as scheme_name, s.tamil_name as scheme_tamil_name, 
-                   s.monthly_amount, s.total_months, s.grocery_package_value, s.bonus_percentage
+                   s.monthly_amount, s.total_months, s.grocery_package_value, s.bonus_percentage,
+                   s.scheme_code, s.end_date, s.redemption_type
             FROM scheme_members sm
             JOIN schemes s ON sm.scheme_id = s.id
             WHERE sm.customer_id = ?
-            ORDER BY sm.id DESC`,
+            ORDER BY sm.id ASC`,
       args: [customerId],
     });
 
     // 3. Payments History
     const paymentsRes = await client.execute({
-      sql: `SELECT p.*, s.name as scheme_name, u.full_name as collected_by_name
+      sql: `SELECT p.*, s.name as scheme_name, s.tamil_name as scheme_tamil_name, sm.passbook_number,
+                   u.full_name as collected_by_name
             FROM payments p
             JOIN schemes s ON p.scheme_id = s.id
+            LEFT JOIN scheme_members sm ON p.member_id = sm.id
             LEFT JOIN users u ON p.collected_by_user_id = u.id
             WHERE p.customer_id = ?
             ORDER BY p.id DESC`,
       args: [customerId],
     });
 
-    // 4. Installments Ledger
+    // 4. Installments Ledger (Separate per member/scheme)
     const installmentsRes = await client.execute({
-      sql: `SELECT i.*, s.name as scheme_name, sm.passbook_number
+      sql: `SELECT i.*, s.name as scheme_name, s.tamil_name as scheme_tamil_name,
+                   sm.passbook_number,
+                   p.receipt_number, p.payment_mode, p.total_amount as payment_amount
             FROM installments i
             JOIN schemes s ON i.scheme_id = s.id
             JOIN scheme_members sm ON i.member_id = sm.id
+            LEFT JOIN payments p ON (i.id = p.installment_id AND p.status = 'completed')
             WHERE i.customer_id = ?
-            ORDER BY i.due_date ASC`,
+            ORDER BY i.member_id ASC, i.installment_number ASC`,
       args: [customerId],
     });
 
     // 5. Redemptions History
     const redemptionsRes = await client.execute({
-      sql: `SELECT r.*, s.name as scheme_name, pt.name as package_name
+      sql: `SELECT r.*, s.name as scheme_name, s.tamil_name as scheme_tamil_name, sm.passbook_number,
+                   pt.name as package_name, pt.tamil_name as package_tamil_name
             FROM redemptions r
             JOIN schemes s ON r.scheme_id = s.id
+            JOIN scheme_members sm ON r.member_id = sm.id
             LEFT JOIN package_templates pt ON r.package_id = pt.id
             WHERE r.customer_id = ?
             ORDER BY r.id DESC`,

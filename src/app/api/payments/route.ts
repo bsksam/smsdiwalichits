@@ -27,9 +27,9 @@ export async function GET(req: Request) {
     const args: any[] = [];
 
     if (search) {
-      sql += " AND (p.receipt_number LIKE ? OR c.full_name LIKE ? OR c.mobile LIKE ? OR sm.passbook_number LIKE ?)";
+      sql += " AND (p.receipt_number LIKE ? OR c.full_name LIKE ? OR c.mobile LIKE ? OR sm.passbook_number LIKE ? OR s.name LIKE ? OR s.tamil_name LIKE ? OR CAST(s.monthly_amount AS TEXT) LIKE ?)";
       const term = `%${search}%`;
-      args.push(term, term, term, term);
+      args.push(term, term, term, term, term, term, term);
     }
     if (customerId) {
       sql += " AND p.customer_id = ?";

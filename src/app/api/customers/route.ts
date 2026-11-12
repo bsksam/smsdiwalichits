@@ -20,9 +20,21 @@ export async function GET(req: Request) {
     const args: any[] = [];
 
     if (search) {
-      sql += ` AND (c.full_name LIKE ? OR c.mobile LIKE ? OR c.customer_code LIKE ? OR c.city LIKE ?)`;
+      sql += ` AND (
+        c.full_name LIKE ? 
+        OR c.mobile LIKE ? 
+        OR c.alt_mobile LIKE ? 
+        OR c.customer_code LIKE ? 
+        OR c.city LIKE ?
+        OR EXISTS (
+          SELECT 1 FROM scheme_members sm 
+          JOIN schemes s ON sm.scheme_id = s.id 
+          WHERE sm.customer_id = c.id 
+            AND (sm.passbook_number LIKE ? OR s.name LIKE ? OR s.tamil_name LIKE ? OR s.scheme_code LIKE ? OR CAST(s.monthly_amount AS TEXT) LIKE ?)
+        )
+      )`;
       const term = `%${search}%`;
-      args.push(term, term, term, term);
+      args.push(term, term, term, term, term, term, term, term, term, term);
     }
 
     if (status) {
@@ -34,8 +46,38 @@ export async function GET(req: Request) {
 
     const result = await client.execute({ sql, args });
 
+    // Fetch enrolled schemes for each customer
+    const customerIds = result.rows.map((c: any) => c.id);
+    let schemesByCustomer: Record<number, any[]> = {};
+    if (customerIds.length > 0) {
+      const placeholders = customerIds.map(() => "?").join(",");
+      const schemesRes = await client.execute({
+        sql: `SELECT sm.id as member_id, sm.customer_id, sm.passbook_number, sm.status as member_status,
+                     sm.completed_installments, sm.total_paid_amount, sm.total_pending_amount,
+                     s.id as scheme_id, s.name as scheme_name, s.tamil_name as scheme_tamil_name,
+                     s.monthly_amount, s.total_months, s.grocery_package_value
+              FROM scheme_members sm
+              JOIN schemes s ON sm.scheme_id = s.id
+              WHERE sm.customer_id IN (${placeholders})
+              ORDER BY sm.id ASC`,
+        args: customerIds,
+      });
+
+      for (const row of schemesRes.rows as any[]) {
+        if (!schemesByCustomer[row.customer_id]) {
+          schemesByCustomer[row.customer_id] = [];
+        }
+        schemesByCustomer[row.customer_id].push(row);
+      }
+    }
+
+    const customersWithSchemes = result.rows.map((c: any) => ({
+      ...c,
+      enrolled_schemes: schemesByCustomer[c.id] || [],
+    }));
+
     return NextResponse.json({
-      customers: result.rows,
+      customers: customersWithSchemes,
     });
   } catch (error: any) {
     console.error("Customers list error:", error);

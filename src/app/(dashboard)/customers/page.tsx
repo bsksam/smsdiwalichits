@@ -271,7 +271,7 @@ export default function CustomersPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={language === "ta" ? "வாடிக்கையாளர் பெயர், மொபைல், ஐடி அல்லது ஊர்..." : "Search by name, mobile, customer ID or city..."}
+            placeholder={language === "ta" ? "பெயர், மொபைல், ஐடி, திட்டம் (1500, 700), அல்லது பாஸ்புக்..." : "Search by name, mobile, ID, scheme (1500, 700), or passbook..."}
             className="w-full pl-10 pr-4 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 focus:ring-2 focus:ring-amber-400"
           />
         </div>
@@ -297,7 +297,7 @@ export default function CustomersPage() {
                 <th className="py-3 px-4">Name & Father/Husband</th>
                 <th className="py-3 px-4">Mobile Numbers</th>
                 <th className="py-3 px-4">Location</th>
-                <th className="py-3 px-4 text-center">Active Schemes</th>
+                <th className="py-3 px-4 text-center">Enrolled Schemes & Passbooks</th>
                 <th className="py-3 px-4 text-right">Total Paid</th>
                 <th className="py-3 px-4 text-center">Status</th>
                 <th className="py-3 px-4 text-center">Actions</th>
@@ -345,9 +345,23 @@ export default function CustomersPage() {
                       <div className="text-[10px] text-amber-400/60">{c.district} - {c.pincode}</div>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300">
-                        {c.active_schemes_count || 0} Schemes
-                      </span>
+                      {c.enrolled_schemes && c.enrolled_schemes.length > 0 ? (
+                        <div className="flex flex-col items-center gap-1.5">
+                          {c.enrolled_schemes.map((es: any) => (
+                            <Link
+                              key={es.member_id}
+                              href={`/customers/${c.id}`}
+                              title={`${es.scheme_name} (${es.passbook_number}) - Click to open ledger`}
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-amber-500/20 hover:bg-amber-400 hover:text-[#1a0004] text-amber-200 border border-amber-500/35 transition-colors"
+                            >
+                              <span className="font-bold text-amber-300">{formatINR(es.monthly_amount)}</span>
+                              <span className="font-mono text-[9px] bg-black/40 px-1 py-0.2 rounded text-amber-300 font-bold">{es.passbook_number}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-amber-300/40 italic">Not Enrolled</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-right font-black text-amber-300">
                       {formatINR(c.total_paid)}

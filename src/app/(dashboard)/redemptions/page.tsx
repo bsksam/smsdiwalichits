@@ -16,7 +16,12 @@ import {
   X,
   AlertCircle,
   Sparkles,
+  Phone,
+  Share2,
+  BookOpen,
+  Filter,
 } from "lucide-react";
+import Link from "next/link";
 
 export default function RedemptionsPage() {
   const { t, language } = useLanguage();
@@ -24,6 +29,10 @@ export default function RedemptionsPage() {
   const [eligibleMembers, setEligibleMembers] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<string>("all"); // all, eligible, in_progress, redeemed
 
   // Issue Redemption Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,8 +50,11 @@ export default function RedemptionsPage() {
 
   const fetchData = async () => {
     try {
+      let redUrl = `/api/redemptions?search=${encodeURIComponent(searchTerm.trim())}`;
+      if (filterType && filterType !== "all") redUrl += `&filter=${filterType}`;
+
       const [redRes, pkgRes] = await Promise.all([
-        fetch("/api/redemptions"),
+        fetch(redUrl),
         fetch("/api/packages"),
       ]);
       const redData = await redRes.json();
@@ -59,8 +71,11 @@ export default function RedemptionsPage() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm, filterType]);
 
   const handleOpenRedeemModal = (member: any) => {
     setSelectedMember(member);
@@ -129,70 +144,230 @@ export default function RedemptionsPage() {
         </div>
       </div>
 
+      {/* CALL & SEARCH BAR (Mobile, Name, Scheme No/Passbook) */}
+      <div className="maroon-card rounded-3xl p-5 shadow-xl border border-amber-500/30 space-y-4">
+        <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+          <div className="relative w-full md:max-w-xl">
+            <Search className="absolute left-3.5 top-3 h-4 w-4 text-amber-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by Mobile (e.g. 9600901937), Customer Name, Scheme No/Amount (1500, 700), or Passbook..."
+              className="w-full pl-10 pr-4 py-2.5 bg-[#180003] border border-amber-500/40 rounded-2xl text-xs text-amber-100 placeholder-amber-400/40 focus:outline-none focus:ring-2 focus:ring-amber-400 font-semibold"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-3 text-amber-400/60 hover:text-amber-200 text-xs font-bold"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
+            {[
+              { id: "all", label: "All Schemes / Memberships" },
+              { id: "eligible", label: "Eligible (12/12 Months)" },
+              { id: "in_progress", label: "In Progress" },
+              { id: "redeemed", label: "Already Redeemed" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilterType(tab.id)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  filterType === tab.id
+                    ? "gold-gradient-btn text-[#1a0004] font-black shadow-md"
+                    : "bg-[#1f0004] text-amber-200/80 border border-amber-500/30 hover:bg-amber-500/10"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {searchTerm && (
+          <div className="flex items-center justify-between text-xs text-amber-300/80 bg-[#1e0004] p-2.5 rounded-xl border border-amber-500/20">
+            <span>
+              Searching results for: <span className="font-bold text-amber-300 font-mono">"{searchTerm}"</span>
+            </span>
+            <span className="font-bold text-amber-400">Found {eligibleMembers.length} scheme membership(s)</span>
+          </div>
+        )}
+      </div>
+
       {/* Eligible Members Ready for Redemption */}
       <div className="maroon-card rounded-3xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/20 pb-3">
           <div>
-            <h3 className="text-sm font-black text-amber-300 font-serif">
-              {language === "ta" ? "பரிசு பெற தகுதியான சந்தாதாரர்கள்" : "Eligible Members for Diwali Hamper Redemption"}
+            <h3 className="text-sm sm:text-base font-black text-amber-300 font-serif flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-400" />
+              <span>{language === "ta" ? "பரிசு பெற தகுதியான சந்தாதாரர்கள் & திட்டங்கள்" : "Enrolled Schemes Ready for Hamper Distribution"}</span>
             </h3>
             <p className="text-xs text-amber-200/60">
-              {language === "ta" ? "முழு தவணைகளையும் செலுத்தி முடித்த வாடிக்கையாளர்கள்" : "Members who completed all installments & passbook ready"}
+              Each scheme joined by a customer is listed separately with its own passbook and delivery status.
             </p>
           </div>
-          <span className="text-xs font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full">
-            {eligibleMembers.length} Eligible
+          <span className="text-xs font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full w-fit">
+            {eligibleMembers.length} Scheme Membership(s)
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {eligibleMembers.length === 0 ? (
+          {loading ? (
+            <div className="col-span-3 text-center py-8 text-amber-300 font-serif text-xs">
+              Searching registered schemes & members...
+            </div>
+          ) : eligibleMembers.length === 0 ? (
             <div className="col-span-3 text-center py-8 text-amber-300/60 font-serif text-xs">
-              No pending eligible members right now. All eligible hampers have been distributed!
+              No scheme members found matching your search term. Try searching by mobile number (e.g. 9600901937) or customer name.
             </div>
           ) : (
-            eligibleMembers.map((m) => (
-              <div
-                key={m.id}
-                className="p-4 rounded-2xl bg-[#1e0004] border border-amber-500/25 flex flex-col justify-between space-y-3"
-              >
-                <div>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-black text-sm text-amber-100">{m.customer_name}</h4>
-                      <p className="text-xs text-amber-400 font-mono font-bold">{m.passbook_number}</p>
+            eligibleMembers.map((m) => {
+              const isEligible = Number(m.completed_installments) >= Number(m.total_months);
+              const isRedeemed = Boolean(m.is_redeemed && Number(m.is_redeemed) > 0);
+
+              return (
+                <div
+                  key={m.id}
+                  className={`p-5 rounded-3xl border flex flex-col justify-between space-y-3.5 transition-all shadow-md ${
+                    isRedeemed
+                      ? "bg-[#180003]/80 border-amber-500/15 opacity-80"
+                      : isEligible
+                      ? "bg-[#250005] border-amber-400 ring-1 ring-amber-400/20"
+                      : "bg-[#200004] border-amber-500/30"
+                  }`}
+                >
+                  <div className="space-y-3">
+                    {/* Header: Name, Passbook, Status */}
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <Link
+                          href={`/customers/${m.customer_id}`}
+                          className="font-black text-sm text-amber-100 hover:text-amber-300 transition-colors"
+                        >
+                          {m.customer_name}
+                        </Link>
+                        <p className="text-xs text-amber-400 font-mono font-bold mt-0.5">
+                          Passbook: <span className="bg-black/40 px-1.5 py-0.5 rounded">{m.passbook_number}</span>
+                        </p>
+                      </div>
+
+                      {isRedeemed ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
+                          ✓ Hamper Issued
+                        </span>
+                      ) : isEligible ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          🏆 Ready to Redeem
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#300008] text-amber-300/80 border border-amber-500/20">
+                          Paid {m.completed_installments}/{m.total_months}
+                        </span>
+                      )}
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                      Paid 12/12
-                    </span>
+
+                    {/* Direct Call & WhatsApp row */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-amber-500/15">
+                      <a
+                        href={`tel:${m.customer_mobile}`}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 border border-emerald-500/40 rounded-xl text-[11px] font-bold transition-all shadow-sm"
+                        title="Click to Call Customer"
+                      >
+                        <Phone className="h-3 w-3" />
+                        <span>Call: {m.customer_mobile}</span>
+                      </a>
+
+                      <a
+                        href={`https://wa.me/91${m.customer_mobile.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-sm"
+                        title="Chat on WhatsApp"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
+
+                    {/* Scheme Details & Value */}
+                    <div className="p-3 bg-[#160002] rounded-2xl text-xs space-y-1.5 border border-amber-500/20">
+                      <div className="flex justify-between">
+                        <span className="text-amber-400/70">Scheme:</span>
+                        <span className="font-bold text-amber-200">{m.scheme_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-amber-400/70">Monthly Due:</span>
+                        <span className="font-mono font-bold text-amber-300">{formatINR(m.monthly_amount)}/mo</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-amber-400/70">Installments:</span>
+                        <span className="font-bold text-amber-300">
+                          {m.completed_installments} of {m.total_months} Months Paid
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-amber-500/15 font-black text-amber-300">
+                        <span>Hamper Value:</span>
+                        <span className="font-serif text-sm text-amber-400">{formatINR(m.grocery_package_value)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-2 text-xs text-amber-200/80 space-y-0.5">
-                    <p>Scheme: <span className="font-semibold text-amber-300">{m.scheme_name}</span></p>
-                    <p>Package Value: <span className="font-black text-amber-400 font-serif">{formatINR(m.grocery_package_value)}</span></p>
-                    <p className="text-[11px] text-amber-400/60">Mobile: {m.customer_mobile}</p>
+
+                  {/* Action buttons */}
+                  <div className="space-y-2 pt-2 border-t border-amber-500/20">
+                    {!isRedeemed ? (
+                      <button
+                        onClick={() => handleOpenRedeemModal(m)}
+                        className="w-full gold-gradient-btn text-[#1a0004] py-2.5 rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Gift className="h-4 w-4" />
+                        <span>{language === "ta" ? "மளிகை தொகுப்பு வழங்குக" : "Issue Grocery Hamper"}</span>
+                      </button>
+                    ) : (
+                      <div className="text-center py-2 bg-emerald-950/40 rounded-xl border border-emerald-500/30 text-[11px] font-bold text-emerald-300">
+                        Delivered ({m.redemption_number})
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-[11px] pt-1">
+                      <Link
+                        href={`/customers/${m.customer_id}`}
+                        className="text-amber-300/80 hover:text-amber-100 font-semibold flex items-center gap-1 hover:underline"
+                      >
+                        <BookOpen className="h-3 w-3" />
+                        <span>View Scheme Ledger</span>
+                      </Link>
+
+                      <Link
+                        href={`/customers/print-card/${m.customer_id}?memberId=${m.id}`}
+                        className="text-amber-400 hover:text-amber-200 font-semibold flex items-center gap-1 hover:underline"
+                      >
+                        <Printer className="h-3 w-3" />
+                        <span>Print Passbook</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
-
-                <button
-                  onClick={() => handleOpenRedeemModal(m)}
-                  className="w-full gold-gradient-btn text-[#1a0004] py-2 rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-1.5 transition-all"
-                >
-                  <Gift className="h-3.5 w-3.5" />
-                  <span>{language === "ta" ? "மளிகை தொகுப்பு வழங்குக" : "Issue Grocery Hamper"}</span>
-                </button>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
 
       {/* Completed Redemptions History */}
       <div className="maroon-card rounded-3xl overflow-hidden shadow-xl border border-amber-500/25">
-        <div className="p-5 border-b border-amber-500/20">
-          <h3 className="font-black text-sm text-amber-300 font-serif">
-            {language === "ta" ? "வழங்கப்பட்ட பரிசு விநியோக வரலாறு" : "Completed Hamper Deliveries & Redemptions"}
-          </h3>
-          <p className="text-xs text-amber-200/60">Official stock deduction log & delivery receipts</p>
+        <div className="p-5 border-b border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="font-black text-sm text-amber-300 font-serif">
+              {language === "ta" ? "வழங்கப்பட்ட பரிசு விநியோக வரலாறு" : "Completed Hamper Deliveries & Redemptions"}
+            </h3>
+            <p className="text-xs text-amber-200/60">Official stock deduction log & delivery receipts</p>
+          </div>
+          <span className="font-mono font-bold text-xs bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full w-fit">
+            Total Distributed: {redemptions.length} Hampers
+          </span>
         </div>
 
         <div className="overflow-x-auto">
@@ -201,8 +376,8 @@ export default function RedemptionsPage() {
               <tr>
                 <th className="py-3 px-4">Invoice No</th>
                 <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Customer & Passbook</th>
-                <th className="py-3 px-4">Scheme</th>
+                <th className="py-3 px-4">Customer & Mobile</th>
+                <th className="py-3 px-4">Scheme & Passbook</th>
                 <th className="py-3 px-4">Package Issued</th>
                 <th className="py-3 px-4 text-right">Package Value</th>
                 <th className="py-3 px-4 text-center">Receipt</th>
@@ -218,7 +393,7 @@ export default function RedemptionsPage() {
               ) : redemptions.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-amber-300/60 font-serif">
-                    No redemption deliveries recorded yet.
+                    No redemption deliveries found matching your search.
                   </td>
                 </tr>
               ) : (
@@ -232,10 +407,13 @@ export default function RedemptionsPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-bold text-amber-100">{r.customer_name}</div>
-                      <div className="font-mono text-[10px] text-amber-400">{r.passbook_number}</div>
+                      <a href={`tel:${r.customer_mobile}`} className="font-mono text-[11px] text-emerald-400 hover:underline">
+                        {r.customer_mobile}
+                      </a>
                     </td>
                     <td className="py-3 px-4 text-amber-200/80">
-                      {r.scheme_name}
+                      <div>{r.scheme_name}</div>
+                      <div className="font-mono text-[10px] text-amber-400 font-bold">{r.passbook_number}</div>
                     </td>
                     <td className="py-3 px-4 font-bold text-amber-300">
                       {r.package_tamil_name || r.package_name || "Special Diwali Hamper"}
@@ -299,7 +477,7 @@ export default function RedemptionsPage() {
                   </span>
                 </div>
                 <div className="pt-1 text-right font-black text-amber-300 text-sm font-serif">
-                  Package Value: {formatINR(selectedMember.grocery_package_value)}
+                  Hamper Value: {formatINR(selectedMember.grocery_package_value)}
                 </div>
               </div>
 

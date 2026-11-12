@@ -32,13 +32,24 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: "Customer is already enrolled in this scheme" }, { status: 400 });
     }
 
-    // Generate unique passbook number
+    // Generate unique passbook number with guaranteed uniqueness
+    const schemeCode = String(scheme.scheme_code || `SCH-${schemeId}`).replace(/^PB-/, "");
     const countRes = await client.execute({
       sql: "SELECT COUNT(*) as count FROM scheme_members WHERE scheme_id = ?",
       args: [schemeId],
     });
-    const nextSeq = Number(countRes.rows[0]?.count || 0) + 1;
-    const passbookNumber = `PB-${scheme.scheme_code}-${String(nextSeq).padStart(3, "0")}`;
+    let nextSeq = Number(countRes.rows[0]?.count || 0) + 1;
+    let passbookNumber = `PB-${schemeCode}-${String(nextSeq).padStart(3, "0")}`;
+
+    while (true) {
+      const checkPb = await client.execute({
+        sql: "SELECT id FROM scheme_members WHERE passbook_number = ?",
+        args: [passbookNumber],
+      });
+      if (checkPb.rows.length === 0) break;
+      nextSeq++;
+      passbookNumber = `PB-${schemeCode}-${String(nextSeq).padStart(3, "0")}`;
+    }
 
     const startDate = customStartDate || new Date().toISOString().split("T")[0];
     const totalMonths = Number(scheme.total_months) || 12;

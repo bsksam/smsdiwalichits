@@ -19,9 +19,19 @@ interface QuickPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  defaultCustomer?: any;
+  defaultMemberId?: number;
+  defaultInstallmentId?: number;
 }
 
-export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentModalProps) {
+export function QuickPaymentModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  defaultCustomer,
+  defaultMemberId,
+  defaultInstallmentId,
+}: QuickPaymentModalProps) {
   const { t, language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [customers, setCustomers] = useState<any[]>([]);
@@ -43,6 +53,30 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedReceipt, setCompletedReceipt] = useState<any>(null);
+
+  // Initialize with default props if passed
+  useEffect(() => {
+    if (isOpen) {
+      setCompletedReceipt(null);
+      setError(null);
+      if (defaultCustomer) {
+        setSelectedCustomer(defaultCustomer);
+        fetch(`/api/customers/${defaultCustomer.id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            const schemesList = data.schemes || [];
+            setCustomerSchemes(schemesList);
+            const targetMember = defaultMemberId
+              ? schemesList.find((s: any) => s.id === defaultMemberId)
+              : schemesList[0];
+            if (targetMember) {
+              handleSelectScheme(targetMember, data.installments || [], defaultInstallmentId);
+            }
+          })
+          .catch(console.error);
+      }
+    }
+  }, [isOpen, defaultCustomer, defaultMemberId, defaultInstallmentId]);
 
   // Search customers on query
   useEffect(() => {
@@ -81,7 +115,7 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
     }
   };
 
-  const handleSelectScheme = (schemeMember: any, allInsts?: any[]) => {
+  const handleSelectScheme = (schemeMember: any, allInsts?: any[], targetInstallmentId?: number) => {
     setSelectedMember(schemeMember);
     const amountVal = Number(schemeMember.monthly_amount);
     setAmount(amountVal);
@@ -91,7 +125,11 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
         (i) => i.member_id === schemeMember.id && i.status !== "paid"
       );
       setPendingInstallments(pending);
-      if (pending.length > 0) {
+      if (targetInstallmentId) {
+        const found = allInsts.find((i) => i.id === targetInstallmentId);
+        if (found) setSelectedInstallment(found);
+        else if (pending.length > 0) setSelectedInstallment(pending[0]);
+      } else if (pending.length > 0) {
         setSelectedInstallment(pending[0]);
       }
     } else {
@@ -100,7 +138,12 @@ export function QuickPaymentModal({ isOpen, onClose, onSuccess }: QuickPaymentMo
         .then((data) => {
           setPendingInstallments(data.installments || []);
           if (data.installments && data.installments.length > 0) {
-            setSelectedInstallment(data.installments[0]);
+            if (targetInstallmentId) {
+              const found = data.installments.find((i: any) => i.id === targetInstallmentId);
+              setSelectedInstallment(found || data.installments[0]);
+            } else {
+              setSelectedInstallment(data.installments[0]);
+            }
           }
         });
     }

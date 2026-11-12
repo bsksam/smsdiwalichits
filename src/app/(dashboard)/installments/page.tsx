@@ -16,21 +16,29 @@ import {
   Printer,
   ChevronRight,
   Sparkles,
+  Phone,
+  BookOpen,
 } from "lucide-react";
+import Link from "next/link";
 import { QuickPaymentModal } from "@/components/ui/QuickPaymentModal";
 
 export default function InstallmentsPage() {
   const { t, language } = useLanguage();
   const [installments, setInstallments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [schemeFilter, setSchemeFilter] = useState("");
   const [schemes, setSchemes] = useState<any[]>([]);
+
+  // Quick Payment modal state
   const [quickPayOpen, setQuickPayOpen] = useState(false);
+  const [selectedInstForPay, setSelectedInstForPay] = useState<any>(null);
 
   const fetchInstallments = async () => {
     try {
       let url = "/api/installments?";
+      if (searchTerm.trim()) url += `search=${encodeURIComponent(searchTerm.trim())}&`;
       if (statusFilter) url += `status=${statusFilter}&`;
       if (schemeFilter) url += `schemeId=${schemeFilter}&`;
 
@@ -51,8 +59,16 @@ export default function InstallmentsPage() {
   }, []);
 
   useEffect(() => {
-    fetchInstallments();
-  }, [statusFilter, schemeFilter]);
+    const timer = setTimeout(() => {
+      fetchInstallments();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm, statusFilter, schemeFilter]);
+
+  const handleOpenPay = (inst: any) => {
+    setSelectedInstForPay(inst);
+    setQuickPayOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -80,7 +96,10 @@ export default function InstallmentsPage() {
           </button>
 
           <button
-            onClick={() => setQuickPayOpen(true)}
+            onClick={() => {
+              setSelectedInstForPay(null);
+              setQuickPayOpen(true);
+            }}
             className="flex items-center gap-2 gold-gradient-btn text-[#1a0004] font-black text-xs px-4 py-2 rounded-xl shadow-md transition-all"
           >
             <Receipt className="h-4 w-4" />
@@ -89,40 +108,56 @@ export default function InstallmentsPage() {
         </div>
       </div>
 
-      {/* Status Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { key: "pending", label: language === "ta" ? "நிலுவையில் உள்ளவை" : "Pending" },
-          { key: "paid", label: language === "ta" ? "செலுத்தப்பட்டவை" : "Paid" },
-          { key: "overdue", label: language === "ta" ? "தாமதமான தவணைகள்" : "Overdue" },
-          { key: "", label: language === "ta" ? "அனைத்து தவணைகளும்" : "All" },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setStatusFilter(tab.key)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              statusFilter === tab.key
-                ? "gold-gradient-btn text-[#1a0004] shadow-md font-black"
-                : "bg-[#250005] text-amber-200/80 border border-amber-500/30 hover:bg-amber-500/10"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Search and Filters Bar */}
+      <div className="maroon-card p-4 rounded-2xl shadow-md space-y-3">
+        <div className="relative w-full">
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-amber-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by customer mobile (e.g. 9600901937), name, scheme (1500, 700), or passbook..."
+            className="w-full pl-10 pr-4 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 focus:ring-2 focus:ring-amber-400 font-semibold"
+          />
+        </div>
 
-        {/* Scheme dropdown */}
-        <select
-          value={schemeFilter}
-          onChange={(e) => setSchemeFilter(e.target.value)}
-          className="ml-auto px-3 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200"
-        >
-          <option value="">{language === "ta" ? "அனைத்து திட்டங்களும்" : "All Schemes"}</option>
-          {schemes.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} ({formatINR(s.monthly_amount)})
-            </option>
-          ))}
-        </select>
+        {/* Status Filter Tabs & Scheme Dropdown */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-amber-500/20">
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { key: "pending", label: language === "ta" ? "நிலுவையில் உள்ளவை" : "Pending" },
+              { key: "paid", label: language === "ta" ? "செலுத்தப்பட்டவை" : "Paid" },
+              { key: "overdue", label: language === "ta" ? "தாமதமான தவணைகள்" : "Overdue" },
+              { key: "", label: language === "ta" ? "அனைத்து தவணைகளும்" : "All" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  statusFilter === tab.key
+                    ? "gold-gradient-btn text-[#1a0004] shadow-md font-black"
+                    : "bg-[#250005] text-amber-200/80 border border-amber-500/30 hover:bg-amber-500/10"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Scheme dropdown */}
+          <select
+            value={schemeFilter}
+            onChange={(e) => setSchemeFilter(e.target.value)}
+            className="px-3 py-1.5 text-xs bg-[#180003] border border-amber-500/40 rounded-xl font-bold text-amber-200"
+          >
+            <option value="">{language === "ta" ? "அனைத்து திட்டங்களும்" : "All Schemes"}</option>
+            {schemes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({formatINR(s.monthly_amount)})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Installments Table */}
@@ -132,9 +167,9 @@ export default function InstallmentsPage() {
             <thead className="bg-[#380109] text-amber-300 font-serif border-b border-amber-500/30">
               <tr>
                 <th className="py-3 px-4">Passbook #</th>
-                <th className="py-3 px-4">Customer Name</th>
+                <th className="py-3 px-4">Customer Name & Mobile</th>
                 <th className="py-3 px-4">Scheme</th>
-                <th className="py-3 px-4 text-center">Installment #</th>
+                <th className="py-3 px-4 text-center">Month #</th>
                 <th className="py-3 px-4">Due Date</th>
                 <th className="py-3 px-4 text-right">Amount</th>
                 <th className="py-3 px-4 text-center">Status</th>
@@ -151,18 +186,27 @@ export default function InstallmentsPage() {
               ) : installments.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-amber-300/60 font-serif">
-                    No installments found for selected filter.
+                    No installments found for selected filter or search query.
                   </td>
                 </tr>
               ) : (
                 installments.map((inst) => (
                   <tr key={inst.id} className="hover:bg-amber-500/5 transition-colors text-amber-100">
                     <td className="py-3 px-4 font-mono font-bold text-amber-400">
-                      {inst.passbook_number}
+                      <Link href={`/customers/${inst.customer_id}`} className="hover:underline">
+                        {inst.passbook_number}
+                      </Link>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-amber-100">{inst.customer_name}</div>
-                      <div className="text-[10px] text-amber-400/60 font-mono">{inst.customer_mobile}</div>
+                      <Link href={`/customers/${inst.customer_id}`} className="font-bold text-amber-100 hover:text-amber-300 transition-colors">
+                        {inst.customer_name}
+                      </Link>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <a href={`tel:${inst.customer_mobile}`} className="text-[10px] text-emerald-400 font-mono hover:underline flex items-center gap-0.5">
+                          <Phone className="h-2.5 w-2.5" />
+                          <span>{inst.customer_mobile}</span>
+                        </a>
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-amber-200/80 font-medium">
                       {inst.scheme_name}
@@ -185,27 +229,44 @@ export default function InstallmentsPage() {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        {inst.status !== "paid" && (
-                          <a
-                            href={getWhatsAppShareUrl(
-                              inst.customer_mobile,
-                              generateDueReminderWhatsAppMessage({
-                                customerName: inst.customer_name,
-                                schemeName: inst.scheme_name,
-                                installmentNumber: inst.installment_number,
-                                amount: inst.amount,
-                                dueDate: formatDate(inst.due_date),
-                                shopName: "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்",
-                                shopPhone: "+91 98765 43210",
-                              })
-                            )}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Send WhatsApp Payment Reminder"
-                            className="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-500/20"
+                        {inst.status !== "paid" ? (
+                          <>
+                            <button
+                              onClick={() => handleOpenPay(inst)}
+                              className="px-2.5 py-1 text-[11px] font-bold gold-gradient-btn text-[#1a0004] rounded-lg shadow-sm flex items-center gap-1"
+                            >
+                              <Receipt className="h-3 w-3" />
+                              <span>Collect</span>
+                            </button>
+                            <a
+                              href={getWhatsAppShareUrl(
+                                inst.customer_mobile,
+                                generateDueReminderWhatsAppMessage({
+                                  customerName: inst.customer_name,
+                                  schemeName: inst.scheme_name,
+                                  installmentNumber: inst.installment_number,
+                                  amount: inst.amount,
+                                  dueDate: formatDate(inst.due_date),
+                                  shopName: "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்",
+                                  shopPhone: "+91 98765 43210",
+                                })
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Send WhatsApp Payment Reminder"
+                              className="p-1 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-500/20"
+                            >
+                              <Share2 className="h-4 w-4" />
+                            </a>
+                          </>
+                        ) : (
+                          <Link
+                            href={`/customers/${inst.customer_id}`}
+                            className="p-1 rounded-lg text-amber-300 hover:bg-amber-500/20 border border-amber-500/30"
+                            title="View Scheme Ledger"
                           >
-                            <Share2 className="h-4 w-4" />
-                          </a>
+                            <BookOpen className="h-3.5 w-3.5" />
+                          </Link>
                         )}
                       </div>
                     </td>
@@ -221,9 +282,16 @@ export default function InstallmentsPage() {
       {quickPayOpen && (
         <QuickPaymentModal
           isOpen={quickPayOpen}
-          onClose={() => setQuickPayOpen(false)}
+          onClose={() => {
+            setQuickPayOpen(false);
+            setSelectedInstForPay(null);
+          }}
+          defaultCustomer={selectedInstForPay ? { id: selectedInstForPay.customer_id, full_name: selectedInstForPay.customer_name, mobile: selectedInstForPay.customer_mobile, customer_code: selectedInstForPay.customer_code } : undefined}
+          defaultMemberId={selectedInstForPay?.member_id}
+          defaultInstallmentId={selectedInstForPay?.id}
           onSuccess={() => {
             setQuickPayOpen(false);
+            setSelectedInstForPay(null);
             fetchInstallments();
           }}
         />

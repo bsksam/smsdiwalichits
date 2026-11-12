@@ -3,9 +3,14 @@ import { client } from "@/db";
 import { logAudit } from "@/lib/audit";
 import { getCurrentUser } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const result = await client.execute(`
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search") || "";
+    const filter = searchParams.get("filter") || ""; // all, eligible, in_progress, redeemed
+
+    // 1. Fetch completed redemptions
+    let redSql = `
       SELECT r.*, c.full_name as customer_name, c.mobile as customer_mobile, c.customer_code,
              s.name as scheme_name, s.tamil_name as scheme_tamil_name, sm.passbook_number,
              pt.name as package_name, pt.tamil_name as package_tamil_name,
@@ -16,25 +21,71 @@ export async function GET() {
       JOIN scheme_members sm ON r.member_id = sm.id
       LEFT JOIN package_templates pt ON r.package_id = pt.id
       LEFT JOIN users u ON r.issued_by_user_id = u.id
-      ORDER BY r.id DESC
-    `);
+      WHERE 1=1
+    `;
+    const redArgs: any[] = [];
+    if (search) {
+      redSql += ` AND (
+        c.full_name LIKE ? 
+        OR c.mobile LIKE ? 
+        OR c.customer_code LIKE ? 
+        OR sm.passbook_number LIKE ? 
+        OR r.redemption_number LIKE ? 
+        OR s.name LIKE ? 
+        OR CAST(s.monthly_amount AS TEXT) LIKE ?
+      )`;
+      const term = `%${search}%`;
+      redArgs.push(term, term, term, term, term, term, term);
+    }
+    redSql += ` ORDER BY r.id DESC`;
+    const result = await client.execute({ sql: redSql, args: redArgs });
 
-    // Fetch eligible members who can redeem (e.g. 12 installments completed or status active)
-    const eligibleMembersRes = await client.execute(`
-      SELECT sm.*, c.full_name as customer_name, c.mobile as customer_mobile, c.customer_code,
+    // 2. Fetch all scheme members for redemption (each scheme membership is individual)
+    let memberSql = `
+      SELECT sm.*, c.full_name as customer_name, c.mobile as customer_mobile, c.alt_mobile, c.customer_code, c.city,
              s.name as scheme_name, s.tamil_name as scheme_tamil_name, s.monthly_amount, s.total_months,
              s.grocery_package_value, s.redemption_type,
-             (SELECT id FROM package_templates WHERE scheme_id = s.id LIMIT 1) as default_package_id
+             (SELECT id FROM package_templates WHERE scheme_id = s.id LIMIT 1) as default_package_id,
+             (SELECT COUNT(*) FROM redemptions WHERE member_id = sm.id AND status = 'issued') as is_redeemed,
+             (SELECT redemption_number FROM redemptions WHERE member_id = sm.id AND status = 'issued' LIMIT 1) as redemption_number
       FROM scheme_members sm
       JOIN customers c ON sm.customer_id = c.id
       JOIN schemes s ON sm.scheme_id = s.id
-      WHERE sm.status = 'active'
-      ORDER BY sm.completed_installments DESC, sm.id ASC
-    `);
+      WHERE 1=1
+    `;
+    const memberArgs: any[] = [];
+
+    if (search) {
+      memberSql += ` AND (
+        c.full_name LIKE ? 
+        OR c.mobile LIKE ? 
+        OR c.alt_mobile LIKE ? 
+        OR c.customer_code LIKE ? 
+        OR sm.passbook_number LIKE ? 
+        OR s.name LIKE ? 
+        OR s.tamil_name LIKE ? 
+        OR s.scheme_code LIKE ? 
+        OR CAST(s.monthly_amount AS TEXT) LIKE ?
+      )`;
+      const term = `%${search}%`;
+      memberArgs.push(term, term, term, term, term, term, term, term, term);
+    }
+
+    if (filter === "eligible") {
+      memberSql += ` AND sm.completed_installments >= s.total_months AND (SELECT COUNT(*) FROM redemptions WHERE member_id = sm.id AND status = 'issued') = 0`;
+    } else if (filter === "in_progress") {
+      memberSql += ` AND sm.completed_installments < s.total_months AND (SELECT COUNT(*) FROM redemptions WHERE member_id = sm.id AND status = 'issued') = 0`;
+    } else if (filter === "redeemed") {
+      memberSql += ` AND (SELECT COUNT(*) FROM redemptions WHERE member_id = sm.id AND status = 'issued') > 0`;
+    }
+
+    memberSql += ` ORDER BY (sm.completed_installments >= s.total_months) DESC, sm.completed_installments DESC, sm.id DESC`;
+
+    const membersRes = await client.execute({ sql: memberSql, args: memberArgs });
 
     return NextResponse.json({
       redemptions: result.rows,
-      eligibleMembers: eligibleMembersRes.rows,
+      eligibleMembers: membersRes.rows,
     });
   } catch (error: any) {
     console.error("Redemptions fetch error:", error);

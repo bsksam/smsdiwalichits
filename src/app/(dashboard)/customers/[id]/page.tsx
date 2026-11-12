@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLanguage } from "@/components/layout/LanguageContext";
 import { formatINR, formatDate, getStatusBadge } from "@/lib/utils";
-import { getWhatsAppShareUrl, generateDueReminderWhatsAppMessage } from "@/lib/whatsapp";
+import { getWhatsAppShareUrl, generateDueReminderWhatsAppMessage, generatePaymentReceiptWhatsAppMessage } from "@/lib/whatsapp";
 import {
   User,
   Phone,
@@ -23,8 +23,13 @@ import {
   Gift,
   X,
   Sparkles,
+  BookOpen,
+  CalendarCheck,
+  ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import { QuickPaymentModal } from "@/components/ui/QuickPaymentModal";
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -38,6 +43,9 @@ export default function CustomerDetailPage() {
   const [installments, setInstallments] = useState<any[]>([]);
   const [redemptions, setRedemptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Active Ledger Tab (either memberId string or "all_payments")
+  const [activeLedgerTab, setActiveLedgerTab] = useState<string>("");
 
   // Reversal Modal
   const [reversalModalOpen, setReversalModalOpen] = useState(false);
@@ -53,16 +61,29 @@ export default function CustomerDetailPage() {
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
 
+  // Quick Payment Modal (Prefilled for specific scheme or installment)
+  const [quickPayOpen, setQuickPayOpen] = useState(false);
+  const [quickPayMemberId, setQuickPayMemberId] = useState<number | undefined>(undefined);
+  const [quickPayInstallmentId, setQuickPayInstallmentId] = useState<number | undefined>(undefined);
+
   const fetchCustomerData = async () => {
     try {
       const res = await fetch(`/api/customers/${customerId}`);
       const data = await res.json();
       if (res.ok) {
         setCustomer(data.customer);
-        setSchemes(data.schemes || []);
+        const enrolled = data.schemes || [];
+        setSchemes(enrolled);
         setPayments(data.payments || []);
         setInstallments(data.installments || []);
         setRedemptions(data.redemptions || []);
+
+        // Default active tab to first scheme if not already set
+        if (enrolled.length > 0 && !activeLedgerTab) {
+          setActiveLedgerTab(String(enrolled[0].id));
+        } else if (enrolled.length === 0) {
+          setActiveLedgerTab("all_payments");
+        }
       }
     } catch (err) {
       console.error(err);
@@ -168,7 +189,7 @@ export default function CustomerDetailPage() {
       schemeName: scheme.scheme_name,
       installmentNumber: (scheme.completed_installments || 0) + 1,
       amount: scheme.monthly_amount,
-      dueDate: "5th of this month",
+      dueDate: "10th of this month",
       shopName: "SRI LAKSHMI SUPERMARKET",
       shopPhone: "+91 98765 43210",
     });
@@ -176,12 +197,40 @@ export default function CustomerDetailPage() {
     window.open(url, "_blank");
   };
 
+  const handleShareReceiptWhatsApp = (p: any) => {
+    const msg = generatePaymentReceiptWhatsAppMessage({
+      customerName: customer.full_name,
+      schemeName: p.scheme_name,
+      installmentNumber: p.installment_number,
+      amount: p.total_amount || p.amount,
+      paymentMode: p.payment_mode || "Cash",
+      receiptNumber: p.receipt_number,
+      paymentDate: formatDate(p.payment_date || p.paid_date),
+      shopName: "ஸ்ரீ லட்சுமி சூப்பர் மார்க்கெட்",
+      shopPhone: "+91 98765 43210",
+    });
+    const url = getWhatsAppShareUrl(customer.mobile, msg);
+    window.open(url, "_blank");
+  };
+
+  const handleCollectSpecificInstallment = (inst: any) => {
+    setQuickPayMemberId(inst.member_id);
+    setQuickPayInstallmentId(inst.id);
+    setQuickPayOpen(true);
+  };
+
+  const handleCollectSchemeDue = (scheme: any) => {
+    setQuickPayMemberId(scheme.id);
+    setQuickPayInstallmentId(undefined);
+    setQuickPayOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
-          <span className="text-xs font-bold text-amber-300">Loading Customer Profile...</span>
+          <span className="text-xs font-bold text-amber-300">Loading Customer Profile & Ledgers...</span>
         </div>
       </div>
     );
@@ -201,6 +250,11 @@ export default function CustomerDetailPage() {
       </div>
     );
   }
+
+  const activeSchemeMember = schemes.find((s) => String(s.id) === activeLedgerTab);
+  const schemeInstallments = activeSchemeMember
+    ? installments.filter((i) => i.member_id === activeSchemeMember.id)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -222,13 +276,25 @@ export default function CustomerDetailPage() {
                 {customer.customer_code}
               </span>
             </div>
-            <p className="text-xs text-amber-200/70 mt-0.5">Registered on {formatDate(customer.registration_date)}</p>
+            <p className="text-xs text-amber-200/70 mt-0.5">
+              Registered on {formatDate(customer.registration_date)} • {schemes.length} Scheme(s) Joined
+            </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Quick Call Button */}
+          <a
+            href={`tel:${customer.mobile}`}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/40 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-bold text-xs shadow-sm transition-all"
+            title="Call Customer Directly"
+          >
+            <Phone className="h-3.5 w-3.5" />
+            <span>Call: {customer.mobile}</span>
+          </a>
+
           <Link
-            href={`/customers/print-card/${customer.id}`}
+            href={`/customers/print-card/${customer.id}${activeSchemeMember ? `?memberId=${activeSchemeMember.id}` : ""}`}
             className="flex items-center gap-2 bg-[#250005] border border-amber-500/30 hover:bg-amber-500/10 text-amber-200 font-semibold text-xs px-3.5 py-2 rounded-xl shadow-sm transition-all"
           >
             <Printer className="h-4 w-4 text-amber-400" />
@@ -323,161 +389,426 @@ export default function CustomerDetailPage() {
         </div>
       </div>
 
-      {/* Enrolled Schemes Section */}
+      {/* Enrolled Schemes Section (Individual Scheme Cards) */}
       <div className="space-y-4">
-        <h3 className="text-base font-black text-amber-300 font-serif">
-          {language === "ta" ? "சேர்ந்துள்ள திட்டங்கள் (Enrolled Chit Schemes)" : "Enrolled Chit Schemes"}
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {schemes.map((s) => (
-            <div
-              key={s.id}
-              className="maroon-card rounded-3xl p-5 shadow-lg space-y-4"
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-black text-sm text-amber-200 font-serif">
-                    {language === "ta" && s.scheme_tamil_name ? s.scheme_tamil_name : s.scheme_name}
-                  </h4>
-                  <p className="text-xs text-amber-300/80 mt-0.5">
-                    Passbook: <span className="font-mono font-bold text-amber-400">{s.passbook_number}</span>
-                  </p>
-                </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(s.status)}`}>
-                  {s.status}
-                </span>
-              </div>
-
-              {/* Progress and numbers */}
-              <div className="grid grid-cols-3 gap-2 p-3 bg-[#1e0004] rounded-2xl text-center text-xs border border-amber-500/20">
-                <div>
-                  <span className="text-[10px] text-amber-400/70 block">Monthly Due</span>
-                  <span className="font-bold text-amber-100">{formatINR(s.monthly_amount)}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-amber-400/70 block">Installments</span>
-                  <span className="font-bold text-amber-300">{s.completed_installments} / {s.total_months}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-amber-400/70 block">Package Value</span>
-                  <span className="font-bold text-amber-400">{formatINR(s.grocery_package_value)}</span>
-                </div>
-              </div>
-
-              {/* Progress bar */}
-              <div>
-                <div className="flex justify-between text-[11px] font-semibold text-amber-300/80 mb-1">
-                  <span>Paid: {formatINR(s.total_paid_amount)}</span>
-                  <span>Pending: {formatINR(s.total_pending_amount)}</span>
-                </div>
-                <div className="w-full bg-[#180003] h-2.5 rounded-full overflow-hidden border border-amber-500/20">
-                  <div
-                    className="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full transition-all"
-                    style={{
-                      width: `${Math.min(100, Math.round(((s.completed_installments || 0) / (s.total_months || 12)) * 100))}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => handleWhatsAppReminder(s)}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 hover:text-emerald-200 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1.5 rounded-xl transition-colors"
-                >
-                  <Share2 className="h-3 w-3" />
-                  <span>Send WhatsApp Due Alert</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Payment History Table with Reversal capability */}
-      <div className="maroon-card rounded-3xl p-6 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-black text-sm sm:text-base text-amber-300 font-serif">
-              {language === "ta" ? "தவணை செலுத்திய வரலாறு & ரசீதுகள்" : "Payment Collection History & Receipts"}
+            <h3 className="text-base font-black text-amber-300 font-serif">
+              {language === "ta" ? "சேர்ந்துள்ள திட்டங்கள் (Enrolled Chit Schemes)" : "Enrolled Chit Schemes"}
             </h3>
-            <p className="text-xs text-amber-200/60">Audited financial transactions</p>
+            <p className="text-xs text-amber-200/70">
+              Each scheme is tracked with its own independent passbook and 12-month ledger.
+            </p>
           </div>
-          <span className="text-xs font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full w-fit">
-            Total Paid: {formatINR(payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + Number(p.total_amount), 0))}
+          <span className="text-xs font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-full">
+            {schemes.length} Active Scheme(s)
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-amber-500/20">
-          <table className="w-full text-left text-xs bg-[#240005]">
-            <thead className="bg-[#380109] text-amber-300 font-serif border-b border-amber-500/30">
-              <tr>
-                <th className="py-3 px-3">Receipt No</th>
-                <th className="py-3 px-3">Date</th>
-                <th className="py-3 px-3">Scheme & Installment</th>
-                <th className="py-3 px-3">Mode</th>
-                <th className="py-3 px-3 text-right">Amount</th>
-                <th className="py-3 px-3 text-center">Status</th>
-                <th className="py-3 px-3 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-amber-500/10">
-              {payments.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-amber-300/60">
-                    No payment history recorded yet.
-                  </td>
-                </tr>
-              ) : (
-                payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-amber-500/5 transition-colors text-amber-100">
-                    <td className="py-3 px-3 font-mono font-bold text-amber-400">
-                      {p.receipt_number}
-                    </td>
-                    <td className="py-3 px-3 text-amber-200/80">
-                      {formatDate(p.payment_date)}
-                    </td>
-                    <td className="py-3 px-3 text-amber-100 font-medium">
-                      {p.scheme_name} <span className="text-amber-400 font-bold">#{p.installment_number}</span>
-                    </td>
-                    <td className="py-3 px-3 uppercase text-[10px] font-bold text-amber-300">
-                      {p.payment_mode}
-                    </td>
-                    <td className="py-3 px-3 text-right font-black text-amber-300">
-                      {formatINR(p.total_amount)}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(p.status)}`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {p.status === "completed" && (
-                          <button
-                            onClick={() => handleOpenReverse(p)}
-                            title="Reverse Transaction with Audit"
-                            className="px-2.5 py-1 text-[10px] font-bold text-rose-300 hover:bg-rose-950/80 rounded-lg border border-rose-500/40 transition-colors flex items-center gap-1"
-                          >
-                            <RotateCcw className="h-3 w-3" />
-                            <span>{t.reverse}</span>
-                          </button>
-                        )}
-                        {p.status === "reversed" && (
-                          <span className="text-[10px] text-amber-300/50 italic" title={p.reversal_reason}>
-                            Reversed ({p.reversal_reason?.slice(0, 15)}...)
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {schemes.length === 0 ? (
+          <div className="maroon-card rounded-3xl p-8 text-center space-y-3">
+            <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto" />
+            <p className="text-sm font-bold text-amber-200">This customer is not enrolled in any chit scheme yet.</p>
+            <button
+              onClick={handleOpenEnroll}
+              className="gold-gradient-btn px-4 py-2 text-[#1a0004] font-black text-xs rounded-xl shadow-md"
+            >
+              + Enroll Customer Now
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {schemes.map((s) => (
+              <div
+                key={s.id}
+                className={`maroon-card rounded-3xl p-5 shadow-lg space-y-4 transition-all ${
+                  activeLedgerTab === String(s.id)
+                    ? "border-2 border-amber-400 ring-2 ring-amber-400/20"
+                    : "hover:border-amber-500/40"
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-black text-base text-amber-200 font-serif">
+                      {language === "ta" && s.scheme_tamil_name ? s.scheme_tamil_name : s.scheme_name}
+                    </h4>
+                    <p className="text-xs text-amber-300/80 mt-0.5">
+                      Passbook No: <span className="font-mono font-bold text-amber-400 bg-black/40 px-2 py-0.5 rounded">{s.passbook_number}</span>
+                    </p>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(s.status)}`}>
+                    {s.status}
+                  </span>
+                </div>
+
+                {/* Progress and numbers */}
+                <div className="grid grid-cols-3 gap-2 p-3 bg-[#1e0004] rounded-2xl text-center text-xs border border-amber-500/20">
+                  <div>
+                    <span className="text-[10px] text-amber-400/70 block">Monthly Due</span>
+                    <span className="font-bold text-amber-100 text-sm">{formatINR(s.monthly_amount)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-amber-400/70 block">Installments</span>
+                    <span className="font-bold text-amber-300 text-sm">{s.completed_installments} / {s.total_months}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-amber-400/70 block">Hamper Value</span>
+                    <span className="font-bold text-amber-400 text-sm font-serif">{formatINR(s.grocery_package_value)}</span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div>
+                  <div className="flex justify-between text-[11px] font-semibold text-amber-300/80 mb-1">
+                    <span>Paid: {formatINR(s.total_paid_amount)}</span>
+                    <span>Pending: {formatINR(s.total_pending_amount)}</span>
+                  </div>
+                  <div className="w-full bg-[#180003] h-2.5 rounded-full overflow-hidden border border-amber-500/20">
+                    <div
+                      className="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, Math.round(((s.completed_installments || 0) / (s.total_months || 12)) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-500/20 text-xs">
+                  <button
+                    onClick={() => setActiveLedgerTab(String(s.id))}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 transition-all ${
+                      activeLedgerTab === String(s.id)
+                        ? "gold-gradient-btn text-[#1a0004]"
+                        : "bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border border-amber-500/30"
+                    }`}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    <span>View Scheme Ledger</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleCollectSchemeDue(s)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1 shadow-sm transition-all"
+                    >
+                      <Receipt className="h-3.5 w-3.5" />
+                      <span>Collect Due</span>
+                    </button>
+
+                    <Link
+                      href={`/customers/print-card/${customer.id}?memberId=${s.id}`}
+                      className="p-1.5 rounded-xl border border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+                      title="Print Passbook for this Scheme"
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                    </Link>
+
+                    <button
+                      onClick={() => handleWhatsAppReminder(s)}
+                      className="p-1.5 rounded-xl border border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/60"
+                      title="Send WhatsApp Due Reminder"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* DEDICATED SEPARATE LEDGER SECTION */}
+      <div className="maroon-card rounded-3xl p-6 shadow-xl space-y-5 border border-amber-500/30">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-500/20 pb-4">
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-amber-300 font-serif flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-amber-400" />
+              <span>{language === "ta" ? "தனிநபர் திட்ட லெட்ஜர் (Scheme Ledger)" : "Dedicated Scheme Installment Ledger"}</span>
+            </h3>
+            <p className="text-xs text-amber-200/70">
+              Select any scheme below to view its complete 12-month installment schedule, paid dates, and dues.
+            </p>
+          </div>
+
+          {activeSchemeMember && (
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/customers/print-card/${customer.id}?memberId=${activeSchemeMember.id}`}
+                className="flex items-center gap-1.5 bg-[#200004] hover:bg-amber-500/10 text-amber-200 border border-amber-500/40 text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm transition-all"
+              >
+                <Printer className="h-4 w-4 text-amber-400" />
+                <span>Print {activeSchemeMember.passbook_number} Passbook</span>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Scheme Selector Tabs */}
+        <div className="flex flex-wrap items-center gap-2">
+          {schemes.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setActiveLedgerTab(String(s.id))}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                activeLedgerTab === String(s.id)
+                  ? "gold-gradient-btn text-[#1a0004] shadow-md font-black"
+                  : "bg-[#250005] text-amber-200/80 border border-amber-500/30 hover:bg-amber-500/15"
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>{s.scheme_name}</span>
+              <span className="font-mono text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-extrabold">
+                {s.passbook_number}
+              </span>
+            </button>
+          ))}
+
+          <button
+            onClick={() => setActiveLedgerTab("all_payments")}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeLedgerTab === "all_payments"
+                ? "gold-gradient-btn text-[#1a0004] shadow-md font-black"
+                : "bg-[#250005] text-amber-200/80 border border-amber-500/30 hover:bg-amber-500/15"
+            }`}
+          >
+            <Receipt className="h-3.5 w-3.5" />
+            <span>All Payments & Receipts ({payments.length})</span>
+          </button>
+        </div>
+
+        {/* Individual Scheme Installment Schedule View */}
+        {activeSchemeMember ? (
+          <div className="space-y-4">
+            {/* Scheme Summary Header Card */}
+            <div className="p-4 bg-[#1e0004] rounded-2xl border border-amber-500/30 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <span className="text-[10px] text-amber-400/70 block uppercase font-serif">Scheme Target</span>
+                <span className="font-black text-amber-100 text-sm">
+                  {formatINR(Number(activeSchemeMember.monthly_amount) * Number(activeSchemeMember.total_months))}
+                </span>
+                <span className="text-[10px] text-amber-300/70 block">({formatINR(activeSchemeMember.monthly_amount)} × {activeSchemeMember.total_months} Mo)</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-400/70 block uppercase font-serif">Amount Paid</span>
+                <span className="font-black text-emerald-400 text-sm">{formatINR(activeSchemeMember.total_paid_amount)}</span>
+                <span className="text-[10px] text-emerald-300/70 block font-bold">{activeSchemeMember.completed_installments} / {activeSchemeMember.total_months} Months Paid</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-400/70 block uppercase font-serif">Remaining Balance</span>
+                <span className="font-black text-amber-300 text-sm">{formatINR(activeSchemeMember.total_pending_amount)}</span>
+                <span className="text-[10px] text-amber-300/70 block">{activeSchemeMember.total_months - activeSchemeMember.completed_installments} Months Pending</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-400/70 block uppercase font-serif">Diwali Hamper Reward</span>
+                <span className="font-black text-amber-400 text-sm font-serif">{formatINR(activeSchemeMember.grocery_package_value)}</span>
+                <span className="text-[10px] text-amber-300/70 block">Full Grocery Hamper</span>
+              </div>
+            </div>
+
+            {/* Installments Schedule Table */}
+            <div className="overflow-x-auto rounded-2xl border border-amber-500/20">
+              <table className="w-full text-left text-xs bg-[#240005]">
+                <thead className="bg-[#380109] text-amber-300 font-serif border-b border-amber-500/30">
+                  <tr>
+                    <th className="py-3 px-3.5 text-center">Month #</th>
+                    <th className="py-3 px-3.5">Due Date</th>
+                    <th className="py-3 px-3.5 text-right">Due Amount</th>
+                    <th className="py-3 px-3.5 text-right">Paid Amount</th>
+                    <th className="py-3 px-3.5">Paid Date</th>
+                    <th className="py-3 px-3.5">Receipt #</th>
+                    <th className="py-3 px-3.5 text-center">Status</th>
+                    <th className="py-3 px-3.5 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-500/10">
+                  {schemeInstallments.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-6 text-center text-amber-300/60 font-serif">
+                        No installments schedule generated yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    schemeInstallments.map((inst) => {
+                      const isPaid = inst.status === "paid";
+                      return (
+                        <tr
+                          key={inst.id}
+                          className={`hover:bg-amber-500/5 transition-colors ${
+                            isPaid ? "text-amber-100" : "text-amber-200/90 font-medium"
+                          }`}
+                        >
+                          <td className="py-3 px-3.5 text-center font-bold font-mono text-amber-400">
+                            Month {inst.installment_number}
+                          </td>
+                          <td className="py-3 px-3.5 text-amber-200/90">
+                            {formatDate(inst.due_date)}
+                          </td>
+                          <td className="py-3 px-3.5 text-right font-black text-amber-100">
+                            {formatINR(inst.amount)}
+                          </td>
+                          <td className="py-3 px-3.5 text-right font-black text-emerald-400">
+                            {inst.paid_amount > 0 ? formatINR(inst.paid_amount) : "-"}
+                          </td>
+                          <td className="py-3 px-3.5 text-amber-200/80">
+                            {inst.paid_date ? formatDate(inst.paid_date) : "-"}
+                          </td>
+                          <td className="py-3 px-3.5 font-mono text-amber-400 font-bold">
+                            {inst.receipt_number || "-"}
+                          </td>
+                          <td className="py-3 px-3.5 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(inst.status)}`}>
+                              {inst.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {!isPaid ? (
+                                <button
+                                  onClick={() => handleCollectSpecificInstallment(inst)}
+                                  className="px-2.5 py-1 text-[11px] font-bold gold-gradient-btn text-[#1a0004] rounded-lg shadow-sm flex items-center gap-1"
+                                >
+                                  <Receipt className="h-3 w-3" />
+                                  <span>Collect</span>
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  {inst.receipt_number && (
+                                    <button
+                                      onClick={() => handleShareReceiptWhatsApp(inst)}
+                                      className="p-1 rounded-lg text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/30"
+                                      title="Share Receipt on WhatsApp"
+                                    >
+                                      <Share2 className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                  <span className="text-[10px] text-emerald-400 font-extrabold flex items-center gap-0.5">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    <span>Cleared</span>
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          /* All Payments History Table with Reversal capability */
+          <div className="space-y-4">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-amber-200/70">Consolidated history of all payments made across all joined schemes:</span>
+              <span className="font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full">
+                Total Paid: {formatINR(payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + Number(p.total_amount), 0))}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-amber-500/20">
+              <table className="w-full text-left text-xs bg-[#240005]">
+                <thead className="bg-[#380109] text-amber-300 font-serif border-b border-amber-500/30">
+                  <tr>
+                    <th className="py-3 px-3">Receipt No</th>
+                    <th className="py-3 px-3">Date</th>
+                    <th className="py-3 px-3">Scheme & Passbook</th>
+                    <th className="py-3 px-3">Inst #</th>
+                    <th className="py-3 px-3">Mode</th>
+                    <th className="py-3 px-3 text-right">Amount</th>
+                    <th className="py-3 px-3 text-center">Status</th>
+                    <th className="py-3 px-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-500/10">
+                  {payments.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-6 text-center text-amber-300/60 font-serif">
+                        No payment history recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    payments.map((p) => (
+                      <tr key={p.id} className="hover:bg-amber-500/5 transition-colors text-amber-100">
+                        <td className="py-3 px-3 font-mono font-bold text-amber-400">
+                          {p.receipt_number}
+                        </td>
+                        <td className="py-3 px-3 text-amber-200/80">
+                          {formatDate(p.payment_date)}
+                        </td>
+                        <td className="py-3 px-3 text-amber-100 font-medium">
+                          <div>{p.scheme_name}</div>
+                          <div className="font-mono text-[10px] text-amber-400">{p.passbook_number}</div>
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-amber-300">
+                          #{p.installment_number}
+                        </td>
+                        <td className="py-3 px-3 uppercase text-[10px] font-bold text-amber-300">
+                          {p.payment_mode}
+                        </td>
+                        <td className="py-3 px-3 text-right font-black text-amber-300">
+                          {formatINR(p.total_amount)}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(p.status)}`}>
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {p.status === "completed" && (
+                              <>
+                                <button
+                                  onClick={() => handleShareReceiptWhatsApp(p)}
+                                  className="p-1 rounded-lg text-emerald-300 hover:bg-emerald-950/60 border border-emerald-500/30"
+                                  title="Share Receipt on WhatsApp"
+                                >
+                                  <Share2 className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleOpenReverse(p)}
+                                  title="Reverse Transaction with Audit"
+                                  className="px-2 py-1 text-[10px] font-bold text-rose-300 hover:bg-rose-950/80 rounded-lg border border-rose-500/40 transition-colors flex items-center gap-1"
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                  <span>{t.reverse}</span>
+                                </button>
+                              </>
+                            )}
+                            {p.status === "reversed" && (
+                              <span className="text-[10px] text-amber-300/50 italic" title={p.reversal_reason}>
+                                Reversed ({p.reversal_reason?.slice(0, 15)}...)
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Payment Modal with Prefilled Customer & Scheme Member */}
+      {customer && (
+        <QuickPaymentModal
+          isOpen={quickPayOpen}
+          onClose={() => setQuickPayOpen(false)}
+          defaultCustomer={customer}
+          defaultMemberId={quickPayMemberId}
+          defaultInstallmentId={quickPayInstallmentId}
+          onSuccess={() => {
+            setQuickPayOpen(false);
+            fetchCustomerData();
+          }}
+        />
+      )}
 
       {/* Enroll in Scheme Modal (Styled in Photo 2 Deep Maroon & Gold) */}
       {enrollModalOpen && (

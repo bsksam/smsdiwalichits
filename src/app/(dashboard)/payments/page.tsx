@@ -173,7 +173,7 @@ export default function PaymentsPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={language === "ta" ? "ரசீது எண், வாடிக்கையாளர் பெயர் அல்லது மொபைல்..." : "Search by receipt number, customer name or mobile..."}
+            placeholder={language === "ta" ? "ரசீது, வாடிக்கையாளர் மொபைல், பெயர், திட்டம் (1500, 700), பாஸ்புக்..." : "Search by receipt #, customer mobile, name, scheme (1500, 700), or passbook..."}
             className="w-full pl-10 pr-4 py-2 text-xs bg-[#180003] border border-amber-500/40 rounded-xl text-amber-100 placeholder-amber-400/40 focus:ring-2 focus:ring-amber-400"
           />
         </div>
