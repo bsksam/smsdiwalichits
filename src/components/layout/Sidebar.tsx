@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "./LanguageContext";
@@ -30,6 +30,51 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { t, language } = useLanguage();
+  const [currentBranch, setCurrentBranch] = useState<{ name: string; phone: string } | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("diwali_chit_active_branch");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchBranch = async () => {
+      try {
+        const res = await fetch("/api/branches");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted && data.branches && data.branches.length > 0) {
+          // Priority: 1. Main branch (is_main_branch === 1), 2. First active branch, 3. First branch
+          const main = data.branches.find((b: any) => b.is_main_branch === 1) || data.branches[0];
+          if (main) {
+            const branchObj = {
+              name: main.name,
+              phone: main.phone || "+91 96009 01937",
+            };
+            setCurrentBranch(branchObj);
+            try {
+              localStorage.setItem("diwali_chit_active_branch", JSON.stringify(branchObj));
+            } catch {}
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching branch in sidebar:", e);
+      }
+    };
+
+    fetchBranch();
+
+    const handleUpdate = () => fetchBranch();
+    window.addEventListener("branchUpdated", handleUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("branchUpdated", handleUpdate);
+    };
+  }, [pathname]);
 
   const navItems = [
     { href: "/dashboard", label: t.dashboard, icon: LayoutDashboard, badge: null },
@@ -127,12 +172,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="rounded-xl border border-amber-500/30 bg-[#360109]/90 p-3 shadow-inner">
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-bold text-amber-300 font-serif">
-                {language === "ta" ? "சேலம் தலைமை கிளை" : "Salem Main Branch"}
+              <span
+                className="text-xs font-bold text-amber-300 font-serif truncate"
+                title={currentBranch?.name || "Main Branch"}
+              >
+                {currentBranch?.name || (language === "ta" ? "முதன்மை கிளை" : "Main Branch")}
               </span>
             </div>
             <p className="mt-1 text-[11px] text-amber-100/60 truncate font-mono">
-              +91 98765 43210 / 94432 10987
+              {currentBranch?.phone || "+91 96009 01937"}
             </p>
           </div>
         </div>

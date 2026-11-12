@@ -190,6 +190,9 @@ export default function StaffPage() {
 
       setIsBranchModalOpen(false);
       fetchData();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("branchUpdated"));
+      }
     } catch (err: any) {
       setError(err.message || "Failed to register branch");
     } finally {
@@ -233,6 +236,9 @@ export default function StaffPage() {
 
       setIsEditBranchModalOpen(false);
       fetchData();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("branchUpdated"));
+      }
     } catch (err: any) {
       setError(err.message || "Failed to update branch");
     } finally {
